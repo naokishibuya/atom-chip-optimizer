@@ -1,4 +1,4 @@
-from typing import List, Tuple
+from typing import List, Optional, Tuple
 from dataclasses import dataclass
 import numpy as np
 
@@ -29,7 +29,7 @@ class RectangularConductor:
         material: str,
         current: float,
         segments: List[RectangularSegment],
-        z_offset: float,
+        z_offset: Optional[float] = 0.0,
     ):
         self.material = material
         self.current = current
