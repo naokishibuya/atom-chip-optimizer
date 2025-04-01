@@ -19,8 +19,7 @@ def plot_potential_1d(
     E, B_mag, _ = atom_chip.get_potentials(points)
 
     fig, ax1 = plt.subplots(figsize=size)
-
-    plt.grid()
+    fig.gca().grid()
 
     # Magnetic field
     ax1.plot(z_vals, B_mag, "bo", markersize=1, label="|B| [G]")
@@ -36,6 +35,7 @@ def plot_potential_1d(
     ax2.set_ylabel("Energy (μK)", color="r")
     ax2.tick_params(axis="y", labelcolor="r")
 
-    plt.title(f"Magnetic Field & Energy at (x={x:.2g} mm, y={y:.2g} mm)", y=1.05)
-
+    # set title
+    fig.gca().set_title(f"Magnetic Field & Energy at (x={x:.2g} mm, y={y:.2g} mm)", y=1.05)
+    fig.tight_layout()
     return fig

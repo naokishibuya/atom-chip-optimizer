@@ -80,5 +80,5 @@ def plot_potential_2d(
     ax.set_xlim([X.min(), X.max()])
     ax.set_ylim([Y.min(), Y.max()])
     ax.set_aspect("equal")
-
+    fig.tight_layout()
     return fig

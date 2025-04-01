@@ -46,7 +46,8 @@ def plot_potential_3d(
         surf = _plot_3d_trapping_potential(atom_chip, E_min, ax, X, Y, z, zlim)
 
     # Colorbar
-    plt.colorbar(surf, ax=ax, shrink=0.6, aspect=10, label="Energy [μK]", pad=0.15)
+    fig.colorbar(surf, ax=ax, shrink=0.6, aspect=10, label="Energy [μK]", pad=0.1)
+    fig.tight_layout()
     return fig
 
 

@@ -56,7 +56,7 @@ def plot_layout_3d(
     # set view angle and aspect ratio
     ax.view_init(elev=elev, azim=azim)
     ax.set_box_aspect((np.ptp(ax.get_xlim3d()), np.ptp(ax.get_ylim3d()), np.ptp(ax.get_zlim3d())))
-
+    fig.tight_layout()
     return fig
 
 
