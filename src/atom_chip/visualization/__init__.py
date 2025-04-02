@@ -5,7 +5,7 @@ import matplotlib
 import matplotlib.pyplot as plt
 from PyQt5.QtWidgets import QApplication
 from ..atom_chip import AtomChip
-from ..search import PotentialMinimum
+from ..potential import PotentialMinimum
 from .layout_3d import plot_layout_3d
 from .potential_1d import plot_potential_1d
 from .potential_2d import plot_potential_2d

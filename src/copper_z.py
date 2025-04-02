@@ -45,22 +45,24 @@ def main():
         ),
     )
 
-    import numpy as np
-
-    points = np.array([[0.0, 0.0, 0.5]])
-    # TODO
-    # B_mag, B = atom_chip.get_fields(points)
-    # print(f"Magnetic field at {points}: {B_mag} {B}")
-    E_min = ac.search.search_minimum_potential(
+    # fmt: off
+    E_min = ac.potential.search_minimum_potential(
         atom_chip.get_potentials,
-        initial_guess=points,
-        max_iterations=int(1e10),
-        learning_rate=1e-2,
-        tolerance=1e-10,
+        x0      = [0.0, 0.0, 0.5],  # Initial guess
+        bounds  = [(-0.5, 0.5), (-0.5, 0.5), (0.0, 1.0)],
+        method  = "Nelder-Mead",
+        options = {
+            "xatol"  : 1e-10,
+            "fatol"  : 1e-10,
+            "maxiter": int(1e5),
+            "maxfev" : int(1e5),
+            "disp"   : True,
+        },
     )
+    # fmt: on
+
     print("min_value", E_min.value)
     print("point", E_min.point)
-    print("grads", E_min.grads)
 
     ac.visualization.show(atom_chip, E_min, "src/copper_z.yaml")
 

@@ -4,8 +4,7 @@ from matplotlib.animation import FuncAnimation
 from mpl_toolkits.mplot3d.art3d import Poly3DCollection
 import numpy as np
 from ..atom_chip import AtomChip
-from ..potential import constants
-from ..search import PotentialMinimum
+from ..potential import constants, PotentialMinimum
 
 
 def plot_potential_3d(

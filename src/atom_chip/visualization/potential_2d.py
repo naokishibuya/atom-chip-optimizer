@@ -3,8 +3,7 @@ import matplotlib.pyplot as plt
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 import numpy as np
 from ..atom_chip import AtomChip
-from ..potential import constants
-from ..search import PotentialMinimum
+from ..potential import constants, PotentialMinimum
 
 
 def plot_potential_2d(

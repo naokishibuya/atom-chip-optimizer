@@ -2,8 +2,7 @@ from typing import Tuple
 import matplotlib.pyplot as plt
 import numpy as np
 from ..atom_chip import AtomChip
-from ..potential import constants
-from ..search import PotentialMinimum
+from ..potential import constants, PotentialMinimum
 
 
 def plot_potential_1d(

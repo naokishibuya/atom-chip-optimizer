@@ -18,12 +18,14 @@ def plot_layout_3d(
     tick: Optional[Union[float, List[float]]] = None,
 ):
     fig = plt.figure(figsize=size)
-    ax = fig.add_subplot(111, projection="3d")
+    ax = fig.add_subplot(111, projection="3d", computed_zorder=False)
 
     # plot the atom chip components
+    z_order = len(atom_chip.components) + 1  # from top to bottom
     for component in atom_chip.components:
         if isinstance(component, RectangularConductor):
-            _plot_rectangular_conductor(ax, component)
+            _plot_rectangular_conductor(ax, component, z_order)
+            z_order -= 1
         else:
             raise ValueError(f"Unsupported component type: {type(component)}")
 
@@ -54,13 +56,13 @@ def plot_layout_3d(
             axis.set_major_locator(plt.MultipleLocator(tick))
 
     # set view angle and aspect ratio
-    ax.view_init(elev=elev, azim=azim)
     ax.set_box_aspect((np.ptp(ax.get_xlim3d()), np.ptp(ax.get_ylim3d()), np.ptp(ax.get_zlim3d())))
-    fig.tight_layout()
+    ax.view_init(elev=elev, azim=azim)
+    # fig.tight_layout()
     return fig
 
 
-def _plot_rectangular_conductor(ax: plt.Axes, conductor: RectangularConductor):
+def _plot_rectangular_conductor(ax: plt.Axes, conductor: RectangularConductor, z_order: int):
     """
     Plot a rectangular conductor in 3D.
 
@@ -93,6 +95,7 @@ def _plot_rectangular_conductor(ax: plt.Axes, conductor: RectangularConductor):
                 alpha=alpha,
                 linewidth=0.1,
                 axlim_clip=True,
+                zorder=z_order,
             )
         )
 
