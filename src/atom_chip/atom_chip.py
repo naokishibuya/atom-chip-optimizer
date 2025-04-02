@@ -1,5 +1,4 @@
 from typing import List
-from jax.typing import ArrayLike
 import jax.numpy as jnp
 from .components import RectangularConductor
 from .field import BiasFields, biot_savart_rectangular
@@ -32,7 +31,7 @@ class AtomChip:
         self.B_min: MinimumResult = None
         self.E_min: MinimumResult = None
 
-    def get_fields(self, points: ArrayLike) -> jnp.ndarray:
+    def get_fields(self, points: jnp.array) -> jnp.ndarray:
         """
         Compute the magnetic field at given points in space.
 
@@ -42,9 +41,7 @@ class AtomChip:
         Returns:
             jnp.ndarray: Magnetic field at the given points.
         """
-        points = jnp.float64(points)
-        if points.ndim == 1:
-            points = points[None, :]
+        points = jnp.atleast_2d(points).astype(jnp.float64)
 
         # Get the bias fields
         B = self.bias_fields.get_fields(points)
@@ -63,7 +60,7 @@ class AtomChip:
         B_mag = jnp.linalg.norm(B, axis=1)
         return B_mag, B
 
-    def get_potentials(self, points: ArrayLike) -> jnp.ndarray:
+    def get_potentials(self, points: jnp.array) -> jnp.ndarray:
         """
         Compute the potential energy at given points in space.
 
@@ -73,8 +70,7 @@ class AtomChip:
         Returns:
             jnp.ndarray: Potential energy at the given points.
         """
-        if points.ndim == 1:
-            points = points[None, :]
+        points = jnp.atleast_2d(points).astype(jnp.float64)
         B_mag, B = self.get_fields(points)
         z = points[:, 2]
         return self.atom.potential_energy(B_mag, z), B_mag, B
@@ -90,17 +86,13 @@ class AtomChip:
             MinimumResult: Result of the minimum search.
         """
 
-        def objective_function(point: ArrayLike) -> float:
-            point = jnp.atleast_2d(point).astype(jnp.float64)  # make it a single entry 2D array
-            (
-                B_mag,
-                _,
-            ) = self.get_fields(point)
-            return B_mag.item()
+        def objective_function(point: jnp.array) -> float:
+            B_mag, _ = self.get_fields(point)
+            return B_mag[0]
 
         print("-" * 100)
         print("Searching for field minimum...[G]")
-        self.B_min = search_minimum(objective_function, options)
+        self.B_min = search_minimum(objective_function, **options)
         return self.B_min
 
     def search_potential_minimum(self, options: dict) -> MinimumResult:
@@ -114,12 +106,11 @@ class AtomChip:
             MinimumResult: Result of the minimum search.
         """
 
-        def objective_function(point: ArrayLike) -> float:
-            point = jnp.atleast_2d(point).astype(jnp.float64)  # make it a single entry 2D array
+        def objective_function(point: jnp.array) -> float:
             E, _, _ = self.get_potentials(point)
-            return E.item()
+            return E[0]
 
         print("-" * 100)
         print("Searching for potential minimum...[J]")
-        self.E_min = search_minimum(objective_function, options)
+        self.E_min = search_minimum(objective_function, **options)
         return self.E_min

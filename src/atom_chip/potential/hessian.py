@@ -62,7 +62,7 @@ def hessian_at_minimum(
 
     # Construct Hessian matrix (symmetric)
     # fmt: off
-    hessian_matrix = jnp.array([
+    hessian_matrix = jnp.float64([
         [d2fxx, d2fxy, d2fxz],
         [d2fxy, d2fyy, d2fyz],
         [d2fxz, d2fyz, d2fzz],

@@ -1,19 +1,16 @@
 import jax
 import jax.numpy as jnp
-from jax.typing import ArrayLike
-
-jax.config.update("jax_enable_x64", True)
 
 
 # fmt: off
 @jax.jit
 def biot_savart_rectangular(
-    points: ArrayLike,  # (M, 3) Evaluation points in 3D space [mm]
-    starts: ArrayLike,  # (N, 3) Start points of wire segments [mm]
-    ends: ArrayLike,  # (N, 3) End points of wire segments [mm]
-    widths: ArrayLike,  # (N,) Widths of wire segments [mm]
-    heights: ArrayLike,  # (N,) Heights of wire segments [mm]
-    currents: ArrayLike,  # (N,) Currents through wire segments [A]
+    points  : jnp.ndarray,  # (M, 3) Evaluation points in 3D space [mm]
+    starts  : jnp.ndarray,  # (N, 3) Start points of wire segments [mm]
+    ends    : jnp.ndarray,  # (N, 3) End points of wire segments [mm]
+    widths  : jnp.ndarray,  # (N,  ) Widths of wire segments [mm]
+    heights : jnp.ndarray,  # (N,  ) Heights of wire segments [mm]
+    currents: jnp.ndarray,  # (N,  ) Currents through wire segments [A]
 ) -> jnp.ndarray:
 # fmt: on
     """

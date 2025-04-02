@@ -11,10 +11,6 @@ import jax.numpy as jnp
 from atom_chip.potential import hessian_at_minimum
 
 
-# Configure JAX for 64-bit precision
-jax.config.update("jax_enable_x64", True)
-
-
 def mock_function1(points: jnp.ndarray) -> jnp.ndarray:
     """
     Mock compute function for testing.
