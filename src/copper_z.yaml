@@ -5,9 +5,8 @@ plots:
   - layout_3d_surface
   - potential_1d
   - potential_2d
-  - potential_2d_surface
   - potential_2d_zoom_in
-  - potential_2d
+  - potential_2d_surface
   - potential_3d
   - potential_3d_surface
   - potential_3d_animate

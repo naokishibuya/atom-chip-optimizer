@@ -3,12 +3,11 @@ import matplotlib.pyplot as plt
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 import numpy as np
 from ..atom_chip import AtomChip
-from ..potential import constants, PotentialMinimum
+from ..potential import constants
 
 
 def plot_potential_2d(
     atom_chip: AtomChip,
-    E_min: PotentialMinimum,
     size: Tuple[int, int],
     x_range: Tuple[float, float, int],
     y_range: Tuple[float, float, int],
@@ -22,6 +21,7 @@ def plot_potential_2d(
     y_vals = np.linspace(*y_range)
     X, Y = np.meshgrid(x_vals, y_vals)
 
+    E_min = atom_chip.E_min
     if z is None:
         z = E_min.point[2]
     points = np.array([[x, y, z] for x, y in zip(X.flatten(), Y.flatten())])

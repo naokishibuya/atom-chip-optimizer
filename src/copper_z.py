@@ -46,8 +46,7 @@ def main():
     )
 
     # fmt: off
-    E_min = ac.potential.search_minimum_potential(
-        atom_chip.get_potentials,
+    search_options = dict(
         x0      = [0.0, 0.0, 0.5],  # Initial guess
         bounds  = [(-0.5, 0.5), (-0.5, 0.5), (0.0, 1.0)],
         method  = "Nelder-Mead",
@@ -58,13 +57,14 @@ def main():
             "maxfev" : int(1e5),
             "disp"   : True,
         },
+        hessian_step = 1e-5,  # Step size for Hessian calculation
+        verbose = True,
     )
     # fmt: on
 
-    print("min_value", E_min.value)
-    print("point", E_min.point)
-
-    ac.visualization.show(atom_chip, E_min, "src/copper_z.yaml")
+    atom_chip.search_field_minimum(search_options)
+    atom_chip.search_potential_minimum(search_options)
+    ac.visualization.show(atom_chip, "src/copper_z.yaml")
 
 
 if __name__ == "__main__":

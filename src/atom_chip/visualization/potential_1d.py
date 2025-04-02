@@ -2,16 +2,16 @@ from typing import Tuple
 import matplotlib.pyplot as plt
 import numpy as np
 from ..atom_chip import AtomChip
-from ..potential import constants, PotentialMinimum
+from ..potential import constants
 
 
 def plot_potential_1d(
     atom_chip: AtomChip,
-    E_min: PotentialMinimum,
     size: Tuple[int, int],
     z_range: Tuple[float, float, int],
 ):
-    x, y = E_min.point[:2]
+    # Get the minimum energy point from the atom chip
+    x, y = atom_chip.E_min.point[:2]
     z_vals = np.linspace(*z_range)
 
     points = np.array([[x, y, z] for z in z_vals])

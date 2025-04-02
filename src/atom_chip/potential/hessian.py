@@ -1,12 +1,20 @@
-from typing import Tuple, Callable
-import numpy as np
+from dataclasses import dataclass
+from typing import Callable
+import jax.numpy as jnp
+
+
+@dataclass
+class Hessian:
+    eigenvalues: jnp.ndarray
+    eigenvectors: jnp.ndarray
+    matrix: jnp.ndarray
 
 
 def hessian_at_minimum(
-    function: Callable[[np.ndarray], np.ndarray],
-    position: np.ndarray,
+    function: Callable[[jnp.ndarray], float],
+    position: jnp.ndarray,
     step: float,  # finite difference step size
-) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
+) -> Hessian:
     """
     Compute the Hessian matrix of a function at a given position using finite differences.
 
@@ -22,8 +30,8 @@ def hessian_at_minimum(
     x0, y0, z0 = position
 
     def F(dx, dy, dz):
-        p = np.array([x0 + dx, y0 + dy, z0 + dz]).reshape(1, 3)  # make it a 2D array of one row
-        return function(p)[0]
+        p = jnp.float64([x0 + dx, y0 + dy, z0 + dz]).reshape(1, 3)  # make it a 2D array of one row
+        return function(p)
 
     # Compute function at the given position
     f0 = F(0, 0, 0)
@@ -54,7 +62,7 @@ def hessian_at_minimum(
 
     # Construct Hessian matrix (symmetric)
     # fmt: off
-    hessian_matrix = np.array([
+    hessian_matrix = jnp.array([
         [d2fxx, d2fxy, d2fxz],
         [d2fxy, d2fyy, d2fyz],
         [d2fxz, d2fyz, d2fzz],
@@ -62,13 +70,10 @@ def hessian_at_minimum(
     # fmt: on
 
     # Compute eigenvalues and eigenvectors
-    eigenvalues, eigenvectors = np.linalg.eigh(hessian_matrix)
+    eigenvalues, eigenvectors = jnp.linalg.eigh(hessian_matrix)
 
-    print("-" * 100)
-    print("Hessian @ position: x={:.4g} mm, y={:.4g} mm, z={:.4g} mm".format(*position))
-    # print(hessian_matrix)
-    print("Hessian Eigenvalues (Principal Curvatures):", eigenvalues)
-    print("Hessian Eigenvectors (Principal Trap Directions):")
-    print(eigenvectors)
-
-    return eigenvalues, eigenvectors, hessian_matrix
+    return Hessian(
+        eigenvalues=eigenvalues,
+        eigenvectors=eigenvectors,
+        matrix=hessian_matrix,
+    )

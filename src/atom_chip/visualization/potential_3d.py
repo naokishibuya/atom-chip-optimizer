@@ -4,12 +4,11 @@ from matplotlib.animation import FuncAnimation
 from mpl_toolkits.mplot3d.art3d import Poly3DCollection
 import numpy as np
 from ..atom_chip import AtomChip
-from ..potential import constants, PotentialMinimum
+from ..potential import constants
 
 
 def plot_potential_3d(
     atom_chip: AtomChip,
-    E_min: PotentialMinimum,
     size: Tuple[int, int],
     x_range: Tuple[float, float, int],
     y_range: Tuple[float, float, int],
@@ -24,6 +23,7 @@ def plot_potential_3d(
     fig = plt.figure(figsize=size)
     ax = fig.add_subplot(111, projection="3d")
 
+    E_min = atom_chip.E_min
     if z_range is not None:
         start, stop, num_intervals = z_range
         num_points = num_intervals + 1
@@ -33,7 +33,7 @@ def plot_potential_3d(
             ax.clear()
             # Compute potentials at each point
             z = z_vals[frame]
-            surf = _plot_3d_trapping_potential(atom_chip, E_min, ax, X, Y, z, zlim)
+            surf = _plot_3d_trapping_potential(atom_chip, ax, X, Y, z, zlim)
             return (surf,)
 
         # keep the animation object alive
@@ -42,7 +42,7 @@ def plot_potential_3d(
     else:
         # Plot 3D trapping potential at a fixed z value
         z = z if z is not None else E_min.point[2]
-        surf = _plot_3d_trapping_potential(atom_chip, E_min, ax, X, Y, z, zlim)
+        surf = _plot_3d_trapping_potential(atom_chip, ax, X, Y, z, zlim)
 
     # Colorbar
     fig.colorbar(surf, ax=ax, shrink=0.6, aspect=10, label="Energy [μK]", pad=0.1)
@@ -52,7 +52,6 @@ def plot_potential_3d(
 
 def _plot_3d_trapping_potential(
     atom_chip: AtomChip,
-    E_min: PotentialMinimum,
     ax: plt.Axes,
     X: np.ndarray,  # Meshgrid x-coordinates
     Y: np.ndarray,  # Meshgrid y-coordinates
@@ -63,6 +62,8 @@ def _plot_3d_trapping_potential(
     Plot 3D trapping potential energy.
     """
 
+    # Get the minimum energy point
+    E_min = atom_chip.E_min
     point = np.array([E_min.point[0], E_min.point[1], z])
     V_at_z = atom_chip.get_potentials(point)[0][0]
     points = np.array([[x, y, z] for x, y in zip(X.flatten(), Y.flatten())])
