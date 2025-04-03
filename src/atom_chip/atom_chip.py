@@ -89,12 +89,12 @@ class AtomChip:
             B_mag, _ = self.get_fields(point)
             return B_mag[0]
 
-        self.field = analyze_field(field_function, options)
+        self.field = analyze_field(self.atom, field_function, options)
 
         # Define the objective function for the trap analysis
         def potential_function(point: jnp.array) -> float:
             E, _, _ = self.get_potentials(point)
             return E[0]
 
-        self.trap = analyze_trap(potential_function, options)
+        self.trap = analyze_trap(self.atom, potential_function, options)
         return self.trap

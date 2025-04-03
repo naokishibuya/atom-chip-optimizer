@@ -14,16 +14,16 @@ class Hessian:
 def hessian_at_minimum(
     function: Callable[[jnp.ndarray], float],
     position: jnp.ndarray,
-    method: str = "jax",  # 'jax' or 'finite_difference'
+    method: str = "jax",  # 'jax' or 'finite-difference'
     **kwargs,
 ) -> Hessian:
     if method == "jax":
         return hessian_by_jax(function, position)
-    elif method == "finite_difference":
+    elif method == "finite-difference":
         step = kwargs.get("step", 1e-5)
         return hessian_by_finite_difference(function, position, step)
     else:
-        raise ValueError(f"Unknown method: {method}. Use 'jax' or 'finite_difference'.")
+        raise ValueError(f"Unknown method: {method}. Use 'jax' or 'finite-difference'.")
 
 
 def hessian_by_jax(

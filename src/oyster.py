@@ -311,11 +311,9 @@ def main():
         ),
         hessian = dict(
             method = "jax",
+            # method = "finite-difference",
+            # hessian_step = 1e-5,  # Step size for Hessian calculation
         ),
-        # hessian = dict(
-        #     method = "finite-difference",
-        #     hessian_step = 1e-5,  # Step size for Hessian calculation
-        # ),
         verbose = True,
     )
     # fmt: on

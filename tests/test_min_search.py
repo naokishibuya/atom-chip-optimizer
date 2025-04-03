@@ -30,7 +30,6 @@ def test_min_search_simple():
             "maxfev": int(1e5),
             "disp": True,
         },
-        hessian_step=1e-5,
     )
 
     result = search_minimum(mock_function, **options)
@@ -53,7 +52,6 @@ def test_min_search_with_bounds():
     options = dict(
         x0=[0.0, 0.0, 5.0],
         bounds=[(-1, 1), (-1, 1), (2, 6)],
-        hessian_step=1e-5,
     )
     result = search_minimum(mock_function, **options)
     assert result.found, f"Search failed: {result.message}"
@@ -80,7 +78,6 @@ def test_min_search_with_options():
             "maxiter": 500,
             "disp": True,
         },
-        hessian_step=1e-5,
     )
     result = search_minimum(mock_function, **options)
     assert result.found, f"Search failed: {result.message}"
@@ -107,7 +104,6 @@ def test_min_search_with_flat_landscape():
     initial_guess = (0.0, 0.0, 3.0)
     options = dict(
         x0=initial_guess,
-        hessian_step=1e-5,
     )
     result = search_minimum(flat_compute, **options)
     assert result.found, f"Search failed: {result.message}"
