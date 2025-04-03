@@ -22,3 +22,15 @@ h: Final[float] = 6.62607015e-34
 
 # Reduced Planck constant, J·s
 hbar: Final[float] = 1.0545718e-34
+
+
+# Utility functions
+def joule_to_microKelvin(E: float) -> float:
+    """
+    Convert energy from Joules to microKelvin.
+    Args:
+        E (float): Energy in Joules.
+    Returns:
+        float: Energy in microKelvin.
+    """
+    return E * 1e6 / kB

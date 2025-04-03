@@ -50,24 +50,31 @@ def main():
     )
 
     # fmt: off
-    options = dict(
-        x0      = [0.0, 0.0, 0.5],  # Initial guess
-        bounds  = [(-0.5, 0.5), (-0.5, 0.5), (0.0, 1.0)],
-        method  = "Nelder-Mead",
-        options = dict(
-            xatol   = 1e-10,
-            fatol   = 1e-10,
-            maxiter = int(1e5),
-            maxfev  = int(1e5),
-            disp    = True,
+    options = ac.potential.AnalysisOptions(
+        search = dict(
+            x0      = [0.0, 0.0, 0.5],  # Initial guess
+            bounds  = [(-0.5, 0.5), (-0.5, 0.5), (0.0, 1.0)],
+            method  = "Nelder-Mead",
+            options = dict(
+                xatol   = 1e-10,
+                fatol   = 1e-10,
+                maxiter = int(1e5),
+                maxfev  = int(1e5),
+                disp    = True,
+            ),
         ),
-        hessian_step = 1e-5,  # Step size for Hessian calculation
+        hessian = dict(
+            method = "jax",
+        ),
+        # hessian = dict(
+        #     method = "finite-difference",
+        #     hessian_step = 1e-5,  # Step size for Hessian calculation
+        # ),
         verbose = True,
     )
     # fmt: on
 
-    atom_chip.search_field_minimum(options)
-    atom_chip.search_potential_minimum(options)
+    atom_chip.analyze(options)
     ac.visualization.show(atom_chip, "src/copper_z.yaml")
 
 

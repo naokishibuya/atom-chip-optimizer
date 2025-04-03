@@ -17,18 +17,22 @@ def plot_potential_2d(
     quiver: Optional[bool] = False,
     cmap: Optional[str] = "jet",
 ):
+    if not atom_chip.trap.minimum.found:
+        print("Minimum not found. Cannot plot potential.")
+        return
+
     x_vals = np.linspace(*x_range)
     y_vals = np.linspace(*y_range)
     X, Y = np.meshgrid(x_vals, y_vals)
 
-    E_min = atom_chip.E_min
+    E_min = atom_chip.trap.minimum
     if z is None:
         z = E_min.point[2]
     points = np.array([[x, y, z] for x, y in zip(X.flatten(), Y.flatten())])
     E, _, B = atom_chip.get_potentials(points)
 
     E = E.reshape(X.shape)
-    T = E * 1e6 / constants.kB  # Convert to μK using Boltzmann constant (J/K)
+    T = constants.joule_to_microKelvin(E)
 
     # create figure
     fig, ax = plt.subplots(figsize=size)
@@ -44,7 +48,7 @@ def plot_potential_2d(
     fig.gca().set_facecolor([0.2, 0.2, 0.2])  # Dark background
 
     # Overlay contour line at the isosurface level
-    relative_level = isosurface_level + E_min.value * 1e6 / constants.kB  # Adjust isosurface level relative to E_min
+    relative_level = constants.joule_to_microKelvin(E_min.value) + isosurface_level
     ax.contour(X, Y, T, levels=[relative_level], colors="w", linestyles="dashed", linewidths=1)
 
     # Add Colorbar
@@ -75,7 +79,7 @@ def plot_potential_2d(
     # Labels & Formatting
     ax.set_xlabel("x [mm]")
     ax.set_ylabel("y [mm]")
-    ax.set_title(f"Energy[μK] @ z = {E_min.point[2]:.4g} mm (Isosurface @{isosurface_level} μK + Minimum)", y=1.05)
+    ax.set_title(f"Energy[μK] @ z = {z:.4g} mm (Isosurface @{isosurface_level} μK + Minimum)", y=1.05)
     ax.set_xlim([X.min(), X.max()])
     ax.set_ylim([Y.min(), Y.max()])
     ax.set_aspect("equal")

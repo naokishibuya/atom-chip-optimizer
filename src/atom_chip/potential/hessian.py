@@ -1,5 +1,6 @@
 from dataclasses import dataclass
 from typing import Callable
+import jax
 import jax.numpy as jnp
 
 
@@ -13,10 +14,51 @@ class Hessian:
 def hessian_at_minimum(
     function: Callable[[jnp.ndarray], float],
     position: jnp.ndarray,
+    method: str = "jax",  # 'jax' or 'finite_difference'
+    **kwargs,
+) -> Hessian:
+    if method == "jax":
+        return hessian_by_jax(function, position)
+    elif method == "finite_difference":
+        step = kwargs.get("step", 1e-5)
+        return hessian_by_finite_difference(function, position, step)
+    else:
+        raise ValueError(f"Unknown method: {method}. Use 'jax' or 'finite_difference'.")
+
+
+def hessian_by_jax(
+    function: Callable[[jnp.ndarray], float],
+    position: jnp.ndarray,
+) -> Hessian:
+    """
+    Compute the Hessian matrix of a function at a given position using JAX's automatic differentiation.
+    Args:
+        position: the function minimum position at which to compute the Hessian.
+        function (Callable): Function to be computed and differentiated.
+    Returns:
+        [Hessian eigenvectors, Hessian eigenvalues, Hessian matrix]
+    """
+
+    # Compute Hessian matrix using JAX's automatic differentiation
+    # The function should take a single point and return the function value
+    hessian_fn = jax.hessian(function)
+    hessian_matrix = hessian_fn(position)
+    eigenvalues, eigenvectors = jnp.linalg.eigh(hessian_matrix)
+    hessian = Hessian(
+        eigenvalues=eigenvalues,
+        eigenvectors=eigenvectors,
+        matrix=hessian_matrix,
+    )
+    return hessian
+
+
+def hessian_by_finite_difference(
+    function: Callable[[jnp.ndarray], float],
+    position: jnp.ndarray,
     step: float,  # finite difference step size
 ) -> Hessian:
     """
-    Compute the Hessian matrix of a function at a given position using finite differences.
+    Compute the Hessian matrix of a function at a given minimum position using finite differences.
 
     Args:
         position: the function minimum position at which to compute the Hessian.

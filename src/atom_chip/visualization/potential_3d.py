@@ -16,6 +16,10 @@ def plot_potential_3d(
     z: Optional[float] = None,
     zlim: Optional[Tuple[float, float]] = None,
 ):
+    if not atom_chip.trap.minimum.found:
+        print("Minimum not found. Cannot plot potential.")
+        return
+
     x_vals = np.linspace(*x_range)
     y_vals = np.linspace(*y_range)
     X, Y = np.meshgrid(x_vals, y_vals)
@@ -23,7 +27,6 @@ def plot_potential_3d(
     fig = plt.figure(figsize=size)
     ax = fig.add_subplot(111, projection="3d")
 
-    E_min = atom_chip.E_min
     if z_range is not None:
         start, stop, num_intervals = z_range
         num_points = num_intervals + 1
@@ -41,7 +44,6 @@ def plot_potential_3d(
         surf = update(0)[0]
     else:
         # Plot 3D trapping potential at a fixed z value
-        z = z if z is not None else E_min.point[2]
         surf = _plot_3d_trapping_potential(atom_chip, ax, X, Y, z, zlim)
 
     # Colorbar
@@ -58,20 +60,17 @@ def _plot_3d_trapping_potential(
     z: float,  # z-coordinate of the minimum potential energy
     zlim: Tuple[float, float],  # z-axis limits for the plot
 ) -> Poly3DCollection:
-    """
-    Plot 3D trapping potential energy.
-    """
-
-    # Get the minimum energy point
-    E_min = atom_chip.E_min
+    # Get the energy at a given z-coordinate or the minimum energy point
+    E_min = atom_chip.trap.minimum
+    z = z if z is not None else E_min.point[2]
     point = np.array([E_min.point[0], E_min.point[1], z])
     V_at_z = atom_chip.get_potentials(point)[0][0]
     points = np.array([[x, y, z] for x, y in zip(X.flatten(), Y.flatten())])
     E, _, B = atom_chip.get_potentials(points)
     V = E.reshape(X.shape)
 
-    T = V * 1e6 / constants.kB
-    T_at_z = V_at_z * 1e6 / constants.kB
+    T = constants.joule_to_microKelvin(V)
+    T_at_z = constants.joule_to_microKelvin(V_at_z)
 
     surf = ax.plot_surface(X, Y, T, cmap="jet", edgecolor="none", vmin=zlim[0], vmax=zlim[1])
     levels = np.linspace(zlim[0], zlim[1], 20)

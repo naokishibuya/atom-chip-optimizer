@@ -2,7 +2,7 @@ from typing import List
 import jax.numpy as jnp
 from .components import RectangularConductor
 from .field import BiasFields, biot_savart_rectangular
-from .potential import Atom, search_minimum, MinimumResult
+from .potential import Atom, AnalysisOptions, analyze_field, FieldAnalysis, analyze_trap, TrapAnalysis
 
 
 class AtomChip:
@@ -27,9 +27,9 @@ class AtomChip:
         self.components = components
         self.bias_fields = bias_fields
 
-        # Initialize the minimum results
-        self.B_min: MinimumResult = None
-        self.E_min: MinimumResult = None
+        # Placeholders for analysis results
+        self.field: FieldAnalysis = None
+        self.trap: TrapAnalysis = None
 
     def get_fields(self, points: jnp.array) -> jnp.ndarray:
         """
@@ -75,42 +75,26 @@ class AtomChip:
         z = points[:, 2]
         return self.atom.potential_energy(B_mag, z), B_mag, B
 
-    def search_field_minimum(self, options: dict) -> MinimumResult:
+    def analyze(self, options: AnalysisOptions) -> TrapAnalysis:
         """
-        Search for the minimum magnetic field in the given options.
-
+        Analyze the trap using the given options.
         Args:
-            options (dict): Options for the optimization algorithm.
-
+            options (TrapAnalysisOptions): Options for the trap analysis.
         Returns:
-            MinimumResult: Result of the minimum search.
+            TrapAnalysis: Result of the trap analysis.
         """
 
-        def objective_function(point: jnp.array) -> float:
+        # Define the objective function for the field analysis
+        def field_function(point: jnp.array) -> float:
             B_mag, _ = self.get_fields(point)
             return B_mag[0]
 
-        print("-" * 100)
-        print("Searching for field minimum...[G]")
-        self.B_min = search_minimum(objective_function, **options)
-        return self.B_min
+        self.field = analyze_field(field_function, options)
 
-    def search_potential_minimum(self, options: dict) -> MinimumResult:
-        """
-        Search for the minimum potential energy in the given options.
-
-        Args:
-            options (dict): Options for the optimization algorithm.
-
-        Returns:
-            MinimumResult: Result of the minimum search.
-        """
-
-        def objective_function(point: jnp.array) -> float:
+        # Define the objective function for the trap analysis
+        def potential_function(point: jnp.array) -> float:
             E, _, _ = self.get_potentials(point)
             return E[0]
 
-        print("-" * 100)
-        print("Searching for potential minimum...[J]")
-        self.E_min = search_minimum(objective_function, **options)
-        return self.E_min
+        self.trap = analyze_trap(potential_function, options)
+        return self.trap

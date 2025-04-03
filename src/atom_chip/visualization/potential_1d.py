@@ -10,8 +10,12 @@ def plot_potential_1d(
     size: Tuple[int, int],
     z_range: Tuple[float, float, int],
 ):
+    if not atom_chip.trap.minimum.found:
+        print("Minimum not found. Cannot plot potential.")
+        return
+
     # Get the minimum energy point from the atom chip
-    x, y = atom_chip.E_min.point[:2]
+    x, y = atom_chip.trap.minimum.point[:2]
     z_vals = np.linspace(*z_range)
 
     points = np.array([[x, y, z] for z in z_vals])
@@ -27,10 +31,10 @@ def plot_potential_1d(
     ax1.tick_params(axis="y", labelcolor="b")
 
     # Energy overlay
-    E = E * 1e6 / constants.kB  # Convert to μK using Boltzmann constant (J/K)
+    T = constants.joule_to_microKelvin(E)
 
     ax2 = ax1.twinx()
-    ax2.plot(z_vals, E, "ro", markersize=1, label="Energy [μK]")
+    ax2.plot(z_vals, T, "ro", markersize=1, label="Energy [μK]")
     ax2.set_ylabel("Energy (μK)", color="r")
     ax2.tick_params(axis="y", labelcolor="r")
 
