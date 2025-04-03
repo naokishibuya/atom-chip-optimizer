@@ -77,24 +77,14 @@ class AtomChip:
 
     def analyze(self, options: AnalysisOptions) -> TrapAnalysis:
         """
-        Analyze the trap using the given options.
+        Analyze the trap using the given options. The analysises are saved in the object.
+
         Args:
             options (TrapAnalysisOptions): Options for the trap analysis.
+
         Returns:
-            TrapAnalysis: Result of the trap analysis.
+            TrapAnalysis: Result of the trap potential analysis.
         """
-
-        # Define the objective function for the field analysis
-        def field_function(point: jnp.array) -> float:
-            B_mag, _ = self.get_fields(point)
-            return B_mag[0]
-
-        self.field = analyze_field(self.atom, field_function, options)
-
-        # Define the objective function for the trap analysis
-        def potential_function(point: jnp.array) -> float:
-            E, _, _ = self.get_potentials(point)
-            return E[0]
-
-        self.trap = analyze_trap(self.atom, potential_function, options)
+        self.field = analyze_field(self.atom, self.get_fields, options)
+        self.trap = analyze_trap(self.atom, self.get_potentials, options)
         return self.trap

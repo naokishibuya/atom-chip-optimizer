@@ -62,8 +62,8 @@ def _plot_3d_trapping_potential(
 ) -> Poly3DCollection:
     # Get the energy at a given z-coordinate or the minimum energy point
     E_min = atom_chip.trap.minimum
-    z = z if z is not None else E_min.point[2]
-    point = np.array([E_min.point[0], E_min.point[1], z])
+    z = z if z is not None else E_min.position[2]
+    point = np.array([E_min.position[0], E_min.position[1], z])
     V_at_z = atom_chip.get_potentials(point)[0][0]
     points = np.array([[x, y, z] for x, y in zip(X.flatten(), Y.flatten())])
     E, _, B = atom_chip.get_potentials(points)

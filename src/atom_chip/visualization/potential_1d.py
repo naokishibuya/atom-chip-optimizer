@@ -15,7 +15,7 @@ def plot_potential_1d(
         return
 
     # Get the minimum energy point from the atom chip
-    x, y = atom_chip.trap.minimum.point[:2]
+    x, y = atom_chip.trap.minimum.position[:2]
     z_vals = np.linspace(*z_range)
 
     points = np.array([[x, y, z] for z in z_vals])

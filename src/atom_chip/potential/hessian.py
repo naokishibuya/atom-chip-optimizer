@@ -2,8 +2,10 @@ from dataclasses import dataclass
 from typing import Callable
 import jax
 import jax.numpy as jnp
+from jax.tree_util import register_dataclass
 
 
+@register_dataclass
 @dataclass
 class Hessian:
     eigenvalues: jnp.ndarray
@@ -11,21 +13,28 @@ class Hessian:
     matrix: jnp.ndarray
 
 
+# This is not jax-jit compatible
 def hessian_at_minimum(
     function: Callable[[jnp.ndarray], float],
     position: jnp.ndarray,
     method: str = "jax",  # 'jax' or 'finite-difference'
     **kwargs,
 ) -> Hessian:
+    """
+    Compute the Hessian matrix of a function at a given position using JAX or finite differences.
+    """
+
     if method == "jax":
-        return hessian_by_jax(function, position)
+        hessian = hessian_by_jax(function, position)
     elif method == "finite-difference":
         step = kwargs.get("step", 1e-5)
-        return hessian_by_finite_difference(function, position, step)
+        hessian = hessian_by_finite_difference(function, position, step)
     else:
         raise ValueError(f"Unknown method: {method}. Use 'jax' or 'finite-difference'.")
+    return hessian
 
 
+# don't jit this function since it just a wrapper around jax.hessian
 def hessian_by_jax(
     function: Callable[[jnp.ndarray], float],
     position: jnp.ndarray,
@@ -44,14 +53,14 @@ def hessian_by_jax(
     hessian_fn = jax.hessian(function)
     hessian_matrix = hessian_fn(position)
     eigenvalues, eigenvectors = jnp.linalg.eigh(hessian_matrix)
-    hessian = Hessian(
+    return Hessian(
         eigenvalues=eigenvalues,
         eigenvectors=eigenvectors,
         matrix=hessian_matrix,
     )
-    return hessian
 
 
+# This is not jax-jit compatible
 def hessian_by_finite_difference(
     function: Callable[[jnp.ndarray], float],
     position: jnp.ndarray,

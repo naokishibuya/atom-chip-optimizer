@@ -27,7 +27,7 @@ def plot_potential_2d(
 
     E_min = atom_chip.trap.minimum
     if z is None:
-        z = E_min.point[2]
+        z = E_min.position[2]
     points = np.array([[x, y, z] for x, y in zip(X.flatten(), Y.flatten())])
     E, _, B = atom_chip.get_potentials(points)
 

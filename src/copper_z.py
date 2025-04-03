@@ -68,6 +68,9 @@ def main():
             # method = "finite-difference",
             # hessian_step = 1e-5,  # Step size for Hessian calculation
         ),
+        # for the trap analayis (not used for field analysis)
+        total_atoms=1e6,
+        condensed_atoms=1e4,
         verbose = True,
     )
     # fmt: on

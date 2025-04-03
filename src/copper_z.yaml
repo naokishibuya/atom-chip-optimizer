@@ -36,7 +36,7 @@ layout_3d_surface:
 potential_1d:
   function: plot_potential_1d
   params:
-    size: [5, 5]
+    size: [6, 5]
     z_range: [0, 2, 200]  # 100 ticks from 0 to 2
 
 potential_2d:

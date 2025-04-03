@@ -8,7 +8,7 @@
 import numpy as np
 import jax
 import jax.numpy as jnp
-from atom_chip.potential import hessian_at_minimum
+from atom_chip.potential.hessian import hessian_by_finite_difference, hessian_by_jax
 
 
 def mock_function1(points: jnp.ndarray) -> jnp.ndarray:
@@ -36,7 +36,7 @@ def test_compute_hessian1():
     """
     # Compute Hessian matrix
     position = jnp.float64([1.0, 2.0, 3.0])
-    hessian_fd = hessian_at_minimum(mock_function1, position, method="finite-difference", step=1e-5)
+    hessian_fd = hessian_by_finite_difference(mock_function1, position, step=1e-5)
 
     print()
     print("-" * 100)
@@ -45,7 +45,7 @@ def test_compute_hessian1():
     print(hessian_fd.eigenvalues)
     print(hessian_fd.eigenvectors)
 
-    hessian_jx = hessian_at_minimum(mock_function1, position, method="jax")
+    hessian_jx = hessian_by_jax(mock_function1, position)
 
     print("-" * 100)
     print("Hessian (JAX):")
@@ -96,7 +96,7 @@ def test_compute_hessian2():
     """
     # Compute Hessian matrix
     position = jnp.array([1.0, 2.0, 3.0])
-    hessian_fd = hessian_at_minimum(mock_function2, position, method="finite-difference", step=1e-5)
+    hessian_fd = hessian_by_finite_difference(mock_function2, position, step=1e-5)
 
     print()
     print("-" * 100)
@@ -105,7 +105,7 @@ def test_compute_hessian2():
     print(hessian_fd.eigenvalues)
     print(hessian_fd.eigenvectors)
 
-    hessian_jx = hessian_at_minimum(mock_function2, position, method="jax")
+    hessian_jx = hessian_by_jax(mock_function2, position)
 
     print("-" * 100)
     print("Hessian Matrix (JAX):")

@@ -1,8 +1,10 @@
 from dataclasses import dataclass
+from jax.tree_util import register_dataclass
 from functools import cached_property
 from . import constants
 
 
+@register_dataclass
 @dataclass(frozen=True)
 class Atom:
     """
@@ -19,7 +21,7 @@ class Atom:
     mass: float  # kg
     gF: float  # Effective g-factor for the full hyperfine state (orbital, spin, and nuclear spin).
     mF: float  # Magnetic quantum number
-    s: float  # s-wave scattering length (m)
+    a_s: float  # s-wave scattering length (m)
 
     @cached_property
     def mu(self) -> float:
@@ -71,6 +73,6 @@ rb87 = Atom(
     mass = 1.44316e-25,  # Mass (kg)
     gF   = 0.5,          # Landé g-factor (F=2 state)
     mF   = 2,            # Magnetic quantum number
-    s    = 5.2e-9,       # s-wave scattering length
+    a_s  = 5.2e-9,       # s-wave scattering length
 )
 # fmt: on

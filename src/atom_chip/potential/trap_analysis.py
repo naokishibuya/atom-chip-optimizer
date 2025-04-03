@@ -1,107 +1,338 @@
+"""
+This module analyzes magnetic trapping potentials to derive relevant BEC properties under different physical regimes.
+
+Analysis is divided into three parts:
+
+Part 1 — Trap Characterization:
+- Locate trap minimum (potential or magnetic field)
+- Compute Hessian and extract trap geometry
+- Calculate trap frequencies (ωₓ, ωᵧ, ω_z)
+- Evaluate Larmor frequency for adiabaticity checks
+
+Part 2 — BEC Analysis (Non-Interacting Model):
+- Estimate spatial extent (harmonic oscillator radii)
+- Compute average harmonic oscillator length and frequency
+- Calculate critical temperature and non-interacting chemical potential
+
+Part 3 — BEC Analysis (Interacting / Thomas-Fermi Limit):
+- Compute Thomas-Fermi radii and chemical potential
+- Valid for high atom numbers or strong interactions (mean-field regime)
+
+Notes:
+- Use Part 2 for small atom numbers and weak interactions (Gaussian ground state)
+- Use Part 3 for large condensed atom numbers (interaction-dominated regime)
+"""
+
 from dataclasses import dataclass
 from typing import Callable, Optional
+import jax
 import jax.numpy as jnp
+from jax.tree_util import register_dataclass
+from . import constants
 from .atom import Atom
 from .minimum import search_minimum, MinimumResult
 from .hessian import hessian_at_minimum, Hessian
+
+
+@register_dataclass
+@dataclass
+class Frequency:
+    frequency: jnp.ndarray  # [Hz]
+    angular: jnp.ndarray  # [rad/s]
+
+
+# Non-interacting BEC properties based on quantum harmonic oscillator model (ideal gas)
+# Assumptions:
+#  - Atom number is low
+#  - Scattering length is small (weak interactions)
+#  - We're mostly interested in qualitative behavior or tight traps
+#  - We want fast estimates without solving the GPE
+# then,
+#  - Gaussian wavefunction
+#  - Radii ≈ harmonic oscillator lengths
+#  - Chemical potential ~ zero-point energy
+# fmt: off
+@register_dataclass
+@dataclass
+class BECAnalysis:
+    radii: jnp.ndarray # Harmonic oscillator length in each direction [m]
+    a_ho : float       # Geometric mean of a_ho (average H.O. length) [m]
+    w_ho : float       # Geometric mean trap frequency (angular) [rad/s]
+    T_c  : float       # Critical temperature [K]
+    mu_0 : float       # Chemical potential in the non-interacting limit [J]
+# fmt: on
+
+
+# Interacting BEC properties in the Thomas-Fermi approximation (mean-field limit)
+# Assumptions:
+#  - Condensed atom number is large
+#  - Interactions dominate over kinetic energy
+#  - We're deep in the BEC regime and want quantitative accuracy
+#  - The trap is relatively loose (large spatial extent)
+# then,
+#  - Inverted-parabola density profile
+#  - Much larger radii (TF radii)
+#  - Chemical potential dominated by interaction energy
+#  - Kinetic energy negligible
+# fmt: off
+@register_dataclass
+@dataclass
+class ThomasFermiAnalysis:
+    radii: jnp.ndarray    # Thomas-Fermi radii in each direction [m]
+    mu   : jnp.ndarray    # Thomas-Fermi chemical potential [J]
+# fmt: on
 
 
 @dataclass
 class AnalysisOptions:
     search: dict
     hessian: dict
+    total_atoms: int = 1e5
+    condensed_atoms: int = 1e3
     verbose: bool = False
 
-
-@dataclass
-class TrapFrequency:
-    frequency: jnp.ndarray  # [Hz]
-    angular: jnp.ndarray  # [rad/s]
+    def __post_init__(self):
+        if self.condensed_atoms < 0:
+            raise ValueError("Condensed atoms must be 0 or greater.")
+        if self.total_atoms < self.condensed_atoms:
+            raise ValueError("Total atoms must be greater than condensed atoms.")
 
 
 @dataclass
 class FieldAnalysis:
     minimum: MinimumResult
     hessian: Optional[Hessian] = None
-    trap_frequency: Optional[TrapFrequency] = None
+    trap: Optional[Frequency] = None
+    larmor: Optional[Frequency] = None
 
 
 @dataclass
 class TrapAnalysis:
     minimum: MinimumResult
     hessian: Optional[Hessian] = None
-    trap_frequency: Optional[TrapFrequency] = None
+    trap: Optional[Frequency] = None
+    larmor: Optional[Frequency] = None
+    bec: Optional[BECAnalysis] = None
+    tf: Optional[ThomasFermiAnalysis] = None
 
 
-def analyze_field(atom: Atom, function: Callable[[jnp.ndarray], float], options: AnalysisOptions) -> TrapAnalysis:
-    # search for the minimum
+# === Field Analysis is done mostly for debugging purposes ===
+
+
+def analyze_field(
+    atom: Atom,
+    field_function: Callable[[jnp.ndarray], float],
+    options: AnalysisOptions,
+) -> FieldAnalysis:
+    """
+    This analyzes the magnetic field and related characteristics.
+    """
+
     print("-" * 100)
-    print("Searching for field minimum...[G]")
-    print(options.search)
-    minimum = search_minimum(function, **options.search)
-    if not minimum.found:
+    print("Analyzing magnetic field [G] ...")
+
+    # Define the objective function for the field analysis
+    def objective(point: jnp.array) -> float:
+        B_mag, _ = field_function(point)
+        return B_mag[0]
+
+    # search for the minimum
+    if options.verbose:
+        print(options.search)
+    minimum = search_minimum(objective, **options.search)
+    if minimum.found:
+        print("Minimum {:.10g}G @ x={:.10g} mm, y={:.10g} mm, z={:.10g} mm".format(minimum.value, *minimum.position))
+    else:
+        print("Optimization failed:", minimum.message)
         return TrapAnalysis(minimum)
 
+    # Step 2: Hessian
+    hessian = hessian_at_minimum(objective, minimum.position, **options.hessian)
     if options.verbose:
-        print("Minimum {:.10g} found @ x={:.10g} mm, y={:.10g} mm, z={:.10g} mm".format(minimum.value, *minimum.point))
-
-    # compute the hessian at the minimum
-    hessian = hessian_at_minimum(function, minimum.point, **options.hessian)
-    if options.verbose:
-        print(f"Hessian: {options.hessian}")
+        print(f"Hessian by {options.hessian}")
         print(hessian.eigenvalues)
         print(hessian.eigenvectors)
         # print(hessian.matrix)
 
-    # compute the trap frequencies
-    # convert from [G/mm^2] to [J/m^2]
-    # 100 = 1e-4 * 1e6 ([G to T] * [/mm^2 to /m^2])
-    eigenvalues = atom.mu * hessian.eigenvalues * 100  # don't modify the hessian matrix!
-    trap_frequency = _trap_frequency(atom, eigenvalues)
+    # Step 3: Trap Frequencies (1e-4 for conversion from G to T)
+    eigenvalues = atom.mu * hessian.eigenvalues * 1e-4  # don't modify the hessian matrix!
+    trap = trap_frequencies(eigenvalues, atom.mass)
     if options.verbose:
-        print("Trap frequencies (Hz):", trap_frequency.frequency)
+        print("Trap frequencies (Hz):", trap.frequency)
 
-    return FieldAnalysis(minimum, hessian, trap_frequency)
+    # Step 4: Larmor Frequency
+    larmor = larmor_frequency(atom, minimum.value)
+    if options.verbose:
+        print("Larmor frequency (MHz):", larmor.frequency * 1e-6)
+
+    return FieldAnalysis(
+        minimum=minimum,
+        hessian=hessian,
+        trap=trap,
+        larmor=larmor,
+    )
 
 
-def analyze_trap(atom: Atom, function: Callable[[jnp.ndarray], float], options: AnalysisOptions) -> TrapAnalysis:
-    # search for the minimum
+# === Trap Analysis is the main purpose ===
+
+
+def analyze_trap(
+    atom: Atom,
+    potential_function: Callable[[jnp.ndarray], float],
+    options: AnalysisOptions,
+) -> TrapAnalysis:
+    """
+    Finds the minimum of the trap potential, calculates relevant properties,
+    and returns a TrapAnalysis object containing the results.
+
+    Args:
+        atom (Atom): The atom object containing the properties of the atom.
+        potential_function (Callable): Function to compute the potential energy at given points.
+        options (AnalysisOptions): Options for the trap analysis.
+
+    Returns:
+        TrapAnalysis: An object containing the results of the trap analysis.
+    """
+
+    # ----------------------------------------------------------------------
+    # Part 1: Trap Characterization
+    # ----------------------------------------------------------------------
+
     print("-" * 100)
-    print("Searching for potential minimum...[J]")
-    print(options.search)
-    minimum = search_minimum(function, **options.search)
-    if not minimum.found:
+    print("Analyzing trap potential [J] ...")
+
+    # Define the objective function for the trap analysis
+    def objective(point: jnp.array) -> float:
+        E, _, _ = potential_function(point)
+        return E[0]
+
+    # Step 1: Potential Minimum
+    if options.verbose:
+        print(options.search)
+    minimum = search_minimum(objective, **options.search)
+    if minimum.found:
+        print("Minimum {:.10g}J @ x={:.10g} mm, y={:.10g} mm, z={:.10g} mm".format(minimum.value, *minimum.position))
+    else:
+        print("Optimization failed:", minimum.message)
         return TrapAnalysis(minimum)
 
+    # Step 2: Hessian
+    hessian = hessian_at_minimum(objective, minimum.position, **options.hessian)
     if options.verbose:
-        print("Minimum {:.10g} found @ x={:.10g} mm, y={:.10g} mm, z={:.10g} mm".format(minimum.value, *minimum.point))
-
-    # compute the hessian at the minimum
-    hessian = hessian_at_minimum(function, minimum.point, **options.hessian)
-    if options.verbose:
-        print(f"Hessian: {options.hessian}")
+        print(f"Hessian by {options.hessian}")
         print(hessian.eigenvalues)
         print(hessian.eigenvectors)
         # print(hessian.matrix)
 
-    # compute the trap frequencies
-    # convert from [J/mm^2] to [J/m^2] by 1/(1e-3 m)^2 = 1e6 m^2
-    eigenvalues = hessian.eigenvalues * 1e6  # don't modify the hessian matrix!
-    trap_frequency = _trap_frequency(atom, eigenvalues)
+    # Step 3: Trap Frequencies
+    trap = trap_frequencies(hessian.eigenvalues, atom.mass)
     if options.verbose:
-        print("Trap frequencies (Hz):", trap_frequency.frequency)
+        print("Trap frequencies (Hz):", trap.frequency)
 
-    return TrapAnalysis(minimum, hessian, trap_frequency)
+    # Step 4: Larmor Frequency
+    _, B_mag, _ = potential_function(minimum.position)
+    larmor = larmor_frequency(atom, B_mag)
+    if options.verbose:
+        print("Magnetic field (G):", B_mag)
+        print("Larmor frequency (MHz):", larmor.frequency * 1e-6)
+
+    # -----------------------------------------------------------------------
+    # Part 2: BEC Analysis (Non-Interacting Limit)
+    # -----------------------------------------------------------------------
+
+    # Step 5: BEC Analysis (Non-Interacting Limit)
+    bec_analysis = analyze_bec_non_interacting(
+        atom=atom,
+        trap_frequency=trap,
+        total_atoms=options.total_atoms,
+    )
+    if options.verbose:
+        print("BEC Analysis (Non-Interacting Limit):")
+        print("  Radii (m):", bec_analysis.radii)
+        print("  a_ho (m):", bec_analysis.a_ho)
+        print("  w_ho (rad/s):", bec_analysis.w_ho)
+        print("  T_c (K):", bec_analysis.T_c)
+        print("  mu_0 (J):", bec_analysis.mu_0)
+
+    # Step 6: BEC Analysis (Thomas-Fermi Limit)
+    tf_analysis = analyze_bec_thomas_fermi(
+        atom=atom,
+        trap_frequency=trap,
+        condensed_atoms=options.condensed_atoms,
+    )
+    if options.verbose:
+        print("BEC Analysis (Thomas-Fermi Limit):")
+        print("  mu (J):", tf_analysis.mu)
+        print("  Radii (m):", tf_analysis.radii)
+
+    return TrapAnalysis(
+        minimum=minimum,
+        hessian=hessian,
+        trap=trap,
+        larmor=larmor,
+        bec=bec_analysis,
+        tf=tf_analysis,
+    )
 
 
-def _trap_frequency(atom: Atom, eigenvalues: jnp.ndarray) -> TrapFrequency:
+# === Part 1: Trap Characterization ===
+
+
+@jax.jit
+def trap_frequencies(eigenvalues: jnp.ndarray, mass: float):
     """
-    The eigenvalues of the Hessian matrix at the minimum are the trap frequencies.
-    The eigenvalues are expected to be in J/m^2.
+    Calculates trap frequencies from Hessian eigenvalues.
     """
+    eigenvalues = eigenvalues * 1e6  # J/mm^2 -> J/m^2
+    angular = jnp.sqrt(eigenvalues / mass)
+    frequency = angular / (2 * jnp.pi)
+    return Frequency(frequency, angular)
 
-    # compute the trap frequencies
-    omega = jnp.sqrt(eigenvalues / atom.mass)
-    frequency = omega / (2 * jnp.pi)  # convert to Hz
-    angular = omega  # convert to rad/s
-    return TrapFrequency(frequency, angular)
+
+@jax.jit
+def larmor_frequency(atom: Atom, B_mag: jnp.ndarray) -> Frequency:
+    """
+    Calculates Larmor frequency from magnetic field strength.
+    """
+    # B_mag is in [G]: convert to [T] by 1e-4
+    # mu B_mag is in [J/T] where mu = gF mF muB
+    angular = atom.mu * B_mag * 1e-4 / constants.hbar
+    frequency = angular / (2 * jnp.pi)
+    return Frequency(frequency, angular)
+
+
+# === Part 2: BEC Analysis (Non-Interacting Limit) ===
+@jax.jit
+def analyze_bec_non_interacting(
+    atom: Atom,
+    trap_frequency: Frequency,
+    total_atoms: int,
+) -> BECAnalysis:
+    omega = trap_frequency.angular
+    omega_avg = jnp.prod(omega) ** (1 / 3)  # geometric mean
+    radii = jnp.sqrt(constants.hbar / (atom.mass * omega))
+    a_ho = jnp.sqrt(constants.hbar / (atom.mass * omega_avg))
+    T_c = 0.94 * constants.hbar * omega_avg / constants.kB * total_atoms ** (1 / 3)
+    mu_0 = 0.5 * constants.hbar * jnp.sum(omega)  # ground state energy of the harmonic oscillator
+    return BECAnalysis(
+        radii=radii,
+        a_ho=a_ho,
+        w_ho=omega_avg,
+        T_c=T_c,
+        mu_0=mu_0,
+    )
+
+
+# === Part 3: BEC Analysis (Thomas-Fermi / Interacting Limit) ===
+@jax.jit
+def analyze_bec_thomas_fermi(
+    atom: Atom,
+    trap_frequency: Frequency,
+    condensed_atoms: int,
+) -> ThomasFermiAnalysis:
+    omega = trap_frequency.angular
+    omega_avg = jnp.prod(omega) ** (1 / 3)  # geometric mean
+    a_ho_avg = jnp.sqrt(constants.hbar / (atom.mass * omega_avg))
+    mu = 0.5 * constants.hbar * omega_avg * (15 * atom.a_s * condensed_atoms / a_ho_avg) ** (2 / 5)
+    radii = jnp.sqrt(2 * mu / atom.mass) / omega
+    return ThomasFermiAnalysis(mu=mu, radii=radii)

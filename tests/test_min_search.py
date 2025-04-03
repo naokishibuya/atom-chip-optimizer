@@ -40,7 +40,7 @@ def test_min_search_simple():
     expected_point = jnp.array([1.0, 2.0, 3.0])
     expected_min_value = mock_function(expected_point)
 
-    np.testing.assert_allclose(result.point, expected_point, atol=1e-4)
+    np.testing.assert_allclose(result.position, expected_point, atol=1e-4)
     np.testing.assert_almost_equal(result.value, expected_min_value, decimal=4)
 
 
@@ -60,7 +60,7 @@ def test_min_search_with_bounds():
     expected_point = jnp.array([1.0, 1.0, 3.0])  # y is clipped to 1
     expected_min_value = mock_function(expected_point)
 
-    np.testing.assert_allclose(result.point, expected_point, atol=1e-4)
+    np.testing.assert_allclose(result.position, expected_point, atol=1e-4)
     np.testing.assert_almost_equal(result.value, expected_min_value, decimal=4)
 
 
@@ -86,7 +86,7 @@ def test_min_search_with_options():
     expected_point = jnp.array([1.0, 2.0, 3.0])
     expected_min_value = mock_function(expected_point)
 
-    np.testing.assert_allclose(result.point, expected_point, atol=1e-4)
+    np.testing.assert_allclose(result.position, expected_point, atol=1e-4)
     np.testing.assert_almost_equal(result.value, expected_min_value, decimal=4)
 
 
@@ -109,5 +109,5 @@ def test_min_search_with_flat_landscape():
     assert result.found, f"Search failed: {result.message}"
 
     # With no magnetic field, the minimum should be the initial gues
-    np.testing.assert_allclose(result.point, initial_guess, atol=1e-4)
+    np.testing.assert_allclose(result.position, initial_guess, atol=1e-4)
     np.testing.assert_almost_equal(result.value, 0.0, decimal=4)
