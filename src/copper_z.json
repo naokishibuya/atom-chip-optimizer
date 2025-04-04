@@ -1,5 +1,7 @@
 [
   {
+    "component_id": 0,
+    "segment_id": 0,
     "material": "copper",
     "current": 85.0,
     "start": [
@@ -16,6 +18,8 @@
     "height": 3.0
   },
   {
+    "component_id": 0,
+    "segment_id": 1,
     "material": "copper",
     "current": 85.0,
     "start": [
@@ -32,6 +36,8 @@
     "height": 7.0
   },
   {
+    "component_id": 0,
+    "segment_id": 2,
     "material": "copper",
     "current": 85.0,
     "start": [
@@ -48,6 +54,8 @@
     "height": 3.0
   },
   {
+    "component_id": 0,
+    "segment_id": 3,
     "material": "copper",
     "current": 85.0,
     "start": [
@@ -64,6 +72,8 @@
     "height": 2.5
   },
   {
+    "component_id": 0,
+    "segment_id": 4,
     "material": "copper",
     "current": 85.0,
     "start": [
@@ -80,6 +90,8 @@
     "height": 1.0
   },
   {
+    "component_id": 0,
+    "segment_id": 5,
     "material": "copper",
     "current": 85.0,
     "start": [
@@ -96,6 +108,8 @@
     "height": 1.0
   },
   {
+    "component_id": 0,
+    "segment_id": 6,
     "material": "copper",
     "current": 85.0,
     "start": [
@@ -112,6 +126,8 @@
     "height": 1.0
   },
   {
+    "component_id": 0,
+    "segment_id": 7,
     "material": "copper",
     "current": 85.0,
     "start": [
@@ -128,6 +144,8 @@
     "height": 2.5
   },
   {
+    "component_id": 0,
+    "segment_id": 8,
     "material": "copper",
     "current": 85.0,
     "start": [
@@ -144,6 +162,8 @@
     "height": 3.0
   },
   {
+    "component_id": 0,
+    "segment_id": 9,
     "material": "copper",
     "current": 85.0,
     "start": [
@@ -160,6 +180,8 @@
     "height": 7.0
   },
   {
+    "component_id": 0,
+    "segment_id": 10,
     "material": "copper",
     "current": 85.0,
     "start": [
@@ -176,6 +198,8 @@
     "height": 3.0
   },
   {
+    "component_id": 1,
+    "segment_id": 0,
     "material": "copper",
     "current": 0.0,
     "start": [
@@ -192,6 +216,8 @@
     "height": 1.0
   },
   {
+    "component_id": 1,
+    "segment_id": 1,
     "material": "copper",
     "current": 0.0,
     "start": [

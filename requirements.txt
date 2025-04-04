@@ -1,6 +1,7 @@
 # common
 numpy==2.2.4
 scipy==1.15.2
+pandas==2.2.3
 # jax related
 jax==0.5.3
 optax==0.2.4

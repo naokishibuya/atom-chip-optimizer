@@ -7,7 +7,7 @@ from offsets import Offsets
 jax.config.update("jax_enable_x64", True)
 
 
-def main():
+def build_atom_chip():
     offsets = Offsets()
     atom_chip = ac.AtomChip(
         name="Copper Z",
@@ -49,7 +49,10 @@ def main():
             stray_fields=[3.5, -0.1, 0.0],  # Stray field offsets [G]
         ),
     )
+    return atom_chip
 
+
+def main():
     # fmt: off
     options = ac.potential.AnalysisOptions(
         search = dict(
@@ -76,10 +79,18 @@ def main():
     )
     # fmt: on
 
+    # Build the atom chip
+    atom_chip = build_atom_chip()
+
+    # Analyze the atom chip
     atom_chip.analyze(options)
+
+    # Export the atom chip to JSON
     directory = os.path.dirname(__file__)
     atom_chip.to_json(os.path.join(directory, "copper_z.json"))
-    ac.visualization.show(atom_chip, "src/copper_z.yaml")
+
+    # Perform the visualization
+    ac.visualization.show(atom_chip, os.path.join(directory, "copper_z.yaml"))
 
 
 if __name__ == "__main__":

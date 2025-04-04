@@ -37,12 +37,19 @@ def get_material(name: str, current: float) -> mathutils.Color:
     return material
 
 
-def show_atom_chip_layout(components: str):
+def import_atom_chip_layout(components: str):
+    """
+    Import the atom chip layout from a JSON file and visualize it in Blender.
+    Args:
+        components (str): JSON string containing the components data.
+    """
     # Clear default cube
     bpy.ops.object.select_all(action="SELECT")  # Selects all objects in the current scene.
     bpy.ops.object.delete(use_global=False)  # Deletes the selected objects.
 
-    for i, component in enumerate(components):
+    for component in components:
+        component_id = component["component_id"]
+        segment_id = component["segment_id"]
         start = mathutils.Vector(component["start"])
         end = mathutils.Vector(component["end"])
         width = component["width"]
@@ -55,8 +62,8 @@ def show_atom_chip_layout(components: str):
 
         # Sanity check: skip any broken geometry
         if not (width > 0 and height > 0 and length > 0):
-            print(f"Skipping component {i} with non-positive size")
-            print(f"[{i}] Start: {start}, End: {end}, Center: {center}, Length: {length:.3e}")
+            print(f"Skipping component {component_id} segment_id {segment_id} with non-positive size")
+            print(f"[{component_id}, {segment_id}] Start: {start}, End: {end}, Center: {center}, Length: {length}")
             continue
 
         # Rotate the cube to align with the start and end points
@@ -72,6 +79,12 @@ def show_atom_chip_layout(components: str):
         obj.rotation_mode = "QUATERNION"
         obj.rotation_quaternion = rotation
         obj.data.materials.append(get_material(material, current))
+
+        # Set the material for the object
+        obj["component_id"] = component_id
+        obj["segment_id"] = segment_id
+        obj["material"] = material
+        obj["current"] = current
 
 
 if __name__ == "__main__":
@@ -91,10 +104,12 @@ if __name__ == "__main__":
         sys.exit(1)
     except json.JSONDecodeError as e:
         print(f"Error decoding JSON: {e}")
+        if not path.endswith(".json"):
+            print("Please ensure the file is a valid JSON file.")
         sys.exit(1)
     except Exception as e:
         print(f"An error occurred: {e}")
         sys.exit(1)
 
     # Call the function to show the visualization
-    show_atom_chip_layout(components)
+    import_atom_chip_layout(components)

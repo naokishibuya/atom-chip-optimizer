@@ -12,6 +12,5 @@ if [ ! -f "$DESIGN_FILE" ]; then
 fi
 
 CURRENT_DIR=$(dirname "$0")
-DESIGN_DIR=$(realpath "$CURRENT_DIR/../designs")
 
-blender --python "$DESIGN_DIR/blender.py" -- "$DESIGN_FILE"
+blender --python "$CURRENT_DIR/blender_import.py" -- "$DESIGN_FILE"

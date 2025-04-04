@@ -1,7 +1,8 @@
 from typing import List
+import pandas as pd
 import json
 import jax.numpy as jnp
-from .components import RectangularConductor
+from .components import RectangularConductor, RectangularSegment
 from .field import BiasFields, biot_savart_rectangular
 from .potential import Atom, AnalysisOptions, analyze_field, FieldAnalysis, analyze_trap, TrapAnalysis
 
@@ -91,8 +92,14 @@ class AtomChip:
         return self.trap
 
     def to_json(self, path: str = None) -> str:
+        """
+        Serialize the AtomChip to JSON format.
+         - If a path is provided, the JSON is saved to that file.
+         - Otherwise, the JSON string is returned.
+        """
         data = []
-        for component in self.components:
+        for component_id, component in enumerate(self.components):
+            segment_id = 0
             for start, end, width, height in zip(
                 component.starts.tolist(),
                 component.ends.tolist(),
@@ -101,15 +108,59 @@ class AtomChip:
             ):
                 data.append(
                     {
+                        "component_id": component_id,
+                        "segment_id": segment_id,
                         "material": component.material,
-                        "current": component.current,
+                        "current": float(component.current),
                         "start": start,
                         "end": end,
                         "width": width,
                         "height": height,
                     }
                 )
+                segment_id += 1
         if path:
             with open(path, "w") as f:
                 json.dump(data, f, indent=2)
         return json.dumps(data, indent=2)
+
+    def from_json(self, path: str):
+        """
+        Load the AtomChip from a JSON file.
+
+        This simply loads the components from the JSON file.
+        The atom and bias fields are not loaded (they remain unchanged).
+        Any analysis results are cleared.
+        """
+        with open(path, "r") as f:
+            data = json.load(f)
+
+        # load and sort the data by component_id and segment_id
+        data_df = pd.DataFrame(data)
+        data_df = data_df.sort_values(by=["component_id", "segment_id"]).reset_index(drop=True)
+
+        # iterate over the components and create a list of RectangularConductor objects
+        self.components = []
+        for component_id, group in data_df.groupby("component_id"):
+            segments = []
+            for _, row in group.iterrows():
+                segments.append(
+                    RectangularSegment(
+                        start=row.start,
+                        end=row.end,
+                        width=row.width,
+                        height=row.height,
+                    )
+                )
+            # create a new component and add it to the list
+            # fmt: off
+            self.components.append(RectangularConductor(
+                material = group.iloc[0]["material"],
+                current  = group.iloc[0]["current"].astype(float),
+                segments = segments,
+            ))
+            # fmt: on
+
+        # Clear the analysis results
+        self.field = None
+        self.trap = None
