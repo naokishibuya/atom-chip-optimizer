@@ -1,4 +1,5 @@
 from typing import List
+import json
 import jax.numpy as jnp
 from .components import RectangularConductor
 from .field import BiasFields, biot_savart_rectangular
@@ -88,3 +89,27 @@ class AtomChip:
         self.field = analyze_field(self.atom, self.get_fields, options)
         self.trap = analyze_trap(self.atom, self.get_potentials, options)
         return self.trap
+
+    def to_json(self, path: str = None) -> str:
+        data = []
+        for component in self.components:
+            for start, end, width, height in zip(
+                component.starts.tolist(),
+                component.ends.tolist(),
+                component.widths.tolist(),
+                component.heights.tolist(),
+            ):
+                data.append(
+                    {
+                        "material": component.material,
+                        "current": component.current,
+                        "start": start,
+                        "end": end,
+                        "width": width,
+                        "height": height,
+                    }
+                )
+        if path:
+            with open(path, "w") as f:
+                json.dump(data, f, indent=2)
+        return json.dumps(data, indent=2)

@@ -1,0 +1,210 @@
+[
+  {
+    "material": "copper",
+    "current": 85.0,
+    "start": [
+      0.0,
+      -40.2,
+      -128.208
+    ],
+    "end": [
+      0.0,
+      -40.2,
+      -35.208
+    ],
+    "width": 3.0,
+    "height": 3.0
+  },
+  {
+    "material": "copper",
+    "current": 85.0,
+    "start": [
+      0.0,
+      -37.2,
+      -31.708
+    ],
+    "end": [
+      0.0,
+      -25.0,
+      -31.708
+    ],
+    "width": 5.0,
+    "height": 7.0
+  },
+  {
+    "material": "copper",
+    "current": 85.0,
+    "start": [
+      0.0,
+      -22.5,
+      -28.208
+    ],
+    "end": [
+      0.0,
+      -22.5,
+      -3.208
+    ],
+    "width": 3.0,
+    "height": 3.0
+  },
+  {
+    "material": "copper",
+    "current": 85.0,
+    "start": [
+      -3.25,
+      -17.75,
+      -1.958
+    ],
+    "end": [
+      -3.25,
+      -6.5,
+      -1.958
+    ],
+    "width": 1.5,
+    "height": 2.5
+  },
+  {
+    "material": "copper",
+    "current": 85.0,
+    "start": [
+      -3.25,
+      -6.5,
+      -1.208
+    ],
+    "end": [
+      -3.25,
+      -0.15,
+      -1.208
+    ],
+    "width": 1.5,
+    "height": 1.0
+  },
+  {
+    "material": "copper",
+    "current": 85.0,
+    "start": [
+      -3.0,
+      0.0,
+      -1.208
+    ],
+    "end": [
+      3.0,
+      0.0,
+      -1.208
+    ],
+    "width": 1.5,
+    "height": 1.0
+  },
+  {
+    "material": "copper",
+    "current": 85.0,
+    "start": [
+      3.25,
+      0.15,
+      -1.208
+    ],
+    "end": [
+      3.25,
+      6.5,
+      -1.208
+    ],
+    "width": 1.5,
+    "height": 1.0
+  },
+  {
+    "material": "copper",
+    "current": 85.0,
+    "start": [
+      3.25,
+      6.5,
+      -1.958
+    ],
+    "end": [
+      3.25,
+      17.75,
+      -1.958
+    ],
+    "width": 1.5,
+    "height": 2.5
+  },
+  {
+    "material": "copper",
+    "current": 85.0,
+    "start": [
+      0.0,
+      22.5,
+      -3.208
+    ],
+    "end": [
+      0.0,
+      22.5,
+      -28.208
+    ],
+    "width": 3.0,
+    "height": 3.0
+  },
+  {
+    "material": "copper",
+    "current": 85.0,
+    "start": [
+      0.0,
+      25.0,
+      -31.708
+    ],
+    "end": [
+      0.0,
+      37.2,
+      -31.708
+    ],
+    "width": 5.0,
+    "height": 7.0
+  },
+  {
+    "material": "copper",
+    "current": 85.0,
+    "start": [
+      0.0,
+      40.2,
+      -35.208
+    ],
+    "end": [
+      0.0,
+      40.2,
+      -128.208
+    ],
+    "width": 3.0,
+    "height": 3.0
+  },
+  {
+    "material": "copper",
+    "current": 0.0,
+    "start": [
+      -10.0,
+      -17.0,
+      -1.208
+    ],
+    "end": [
+      -10.0,
+      17.0,
+      -1.208
+    ],
+    "width": 2.0,
+    "height": 1.0
+  },
+  {
+    "material": "copper",
+    "current": 0.0,
+    "start": [
+      10.0,
+      -17.0,
+      -1.208
+    ],
+    "end": [
+      10.0,
+      17.0,
+      -1.208
+    ],
+    "width": 2.0,
+    "height": 1.0
+  }
+]

@@ -1,3 +1,4 @@
+import os
 import atom_chip as ac
 import jax
 from offsets import Offsets
@@ -9,7 +10,7 @@ jax.config.update("jax_enable_x64", True)
 def main():
     offsets = Offsets()
     atom_chip = ac.AtomChip(
-        name="example_chip",
+        name="Copper Z",
         atom=ac.rb87,
         components=[
             ac.components.RectangularConductor(
@@ -76,6 +77,8 @@ def main():
     # fmt: on
 
     atom_chip.analyze(options)
+    directory = os.path.dirname(__file__)
+    atom_chip.to_json(os.path.join(directory, "copper_z.json"))
     ac.visualization.show(atom_chip, "src/copper_z.yaml")
 
 

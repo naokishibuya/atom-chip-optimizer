@@ -1,3 +1,4 @@
+import os
 import atom_chip as ac
 import jax
 from offsets import Offsets
@@ -322,7 +323,9 @@ def main():
     # fmt: on
 
     atom_chip.analyze(options)
-    ac.visualization.show(atom_chip, "src/oyster.yaml")
+    directory = os.path.dirname(__file__)
+    atom_chip.to_json(os.path.join(directory, "oyster.json"))
+    ac.visualization.show(atom_chip, os.path.join(directory, "oyster.yaml"))
 
 
 if __name__ == "__main__":

@@ -10,6 +10,7 @@ def plot_layout_3d(
     atom_chip: AtomChip,
     title: str = "Atom Chip Layout",
     size: Tuple[int, int] = (7, 6),
+    compute_zorder: bool = True,
     azim: float = 0.0,
     elev: float = 0.0,
     xlim: Optional[Tuple[float, float]] = None,
@@ -18,10 +19,10 @@ def plot_layout_3d(
     tick: Optional[Union[float, List[float]]] = None,
 ):
     fig = plt.figure(figsize=size)
-    ax = fig.add_subplot(111, projection="3d", computed_zorder=False)
+    ax = fig.add_subplot(111, projection="3d", computed_zorder=compute_zorder)
 
     # plot the atom chip components
-    z_order = len(atom_chip.components) + 1  # from top to bottom
+    z_order = len(atom_chip.components) + 1  # z_order works only if compute_zorder is False
     for component in atom_chip.components:
         if isinstance(component, RectangularConductor):
             _plot_rectangular_conductor(ax, component, z_order)

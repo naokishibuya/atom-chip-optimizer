@@ -15,6 +15,7 @@ layout_3d:
   params:
     title: Atom Chip Layout
     size: [5, 5]
+    compute_zorder: false
     azim: -140  # Azimuth angle
     elev: 20    # Elevation angle
     ylim: [-20, 20]
@@ -25,6 +26,7 @@ layout_3d_surface:
   params:
     title: Atom Chip Layout (Surface Only)
     size: [5, 5]
+    compute_zorder: false
     azim: -140  # Azimuth angle
     elev: 80    # Elevation angle
     xlim: [-50, 50]
