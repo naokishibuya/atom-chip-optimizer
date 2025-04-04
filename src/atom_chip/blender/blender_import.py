@@ -144,14 +144,40 @@ def menu_func_import(self, context):
     self.layout.operator(AtomChipImporter.bl_idname, text="Atom Chip Layout (.json)")
 
 
-def update_material_color(self, context):
-    current = getattr(self, "current", 0.0)
-    material = getattr(self, "material", "copper")
+def update_material_color(obj):
+    current = getattr(obj, "current", 0.0)
+    material = getattr(obj, "material", "copper")
     mat = get_material(material, current)
 
-    if self.type == "MESH":
-        self.data.materials.clear()
-        self.data.materials.append(mat)
+    if obj.type == "MESH":
+        obj.data.materials.clear()
+        obj.data.materials.append(mat)
+
+
+def update_material(self, context):
+    # Update material color for the current object
+    update_material_color(self)
+
+    # Propagate to same-component objects
+    for obj in bpy.data.objects:
+        if obj == self:
+            continue
+        if obj.component_id == self.component_id:
+            obj["material"] = self["material"]  # this does not trigger more callbacks
+            update_material_color(obj)
+
+
+def update_current(self, context):
+    # Update material color for the current object
+    update_material_color(self)
+
+    # Propagate to same-component objects
+    for obj in bpy.data.objects:
+        if obj == self:
+            continue
+        if obj.component_id == self.component_id:
+            obj["current"] = self["current"]  # this does not trigger more callbacks
+            update_material_color(obj)
 
 
 def register():
@@ -165,9 +191,13 @@ def register():
             ("gold", "Gold", ""),
         ],
         default="copper",
-        update=update_material_color,
+        update=update_material,
     )
-    bpy.types.Object.current = bpy.props.FloatProperty(name="Current", default=0.0, update=update_material_color)
+    bpy.types.Object.current = bpy.props.FloatProperty(
+        name="Current",
+        default=0.0,
+        update=update_current,
+    )
     bpy.utils.register_class(AtomChipImporter)
     bpy.utils.register_class(AtomChipPropertiesPanel)
     bpy.types.TOPBAR_MT_file_import.append(menu_func_import)
