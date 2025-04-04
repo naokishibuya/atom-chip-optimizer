@@ -11,20 +11,24 @@ bl_info = {
 # ruff: noqa: E402
 
 # Atom Chip Layout Exporter for Blender
+# ==========================================================
 # This script exports the layout of an atom chip as a JSON file.
 #
-# [Registration]
-# You can use the Blender's Scripting tab to enable this script:
-# 1. Open this Python script in the Scripting.
-# 2. Click Run Script.
-# 3. File > Export > Atom Chip Layout (.json)
-#
-# Optionally, you can make it permanent:
+# [Addon Registration]
 # 1. Edit -> Preferences
 # 2. Add-ons -> Install (dropdown menu @ top-right corner)
 # 3. Select this script
-# 4. You can enable/disable/delete it from the Add-ons tab
 #
+# [Addon Uninstallation]
+# You can enable/disable/delete it from the Add-ons tab
+#
+# [How to use]
+# To export the atom chip layout from Blender into a JSON file:
+# File > Export > Atom Chip Layout (.json)
+
+# Note: bpy and mathutils are part of the Blender Python API
+# This script is intended to be run inside Blender's scripting environment
+# and is not meant to be run as a standalone Python script.
 import bpy
 import mathutils
 import json
@@ -40,6 +44,10 @@ class AtomChipExporter(Operator, ExportHelper):
     bl_options = {"PRESET"}
 
     filename_ext = ".json"
+    filter_glob: bpy.props.StringProperty(  # type: ignore[reportInvalidTypeForm]
+        default="*.json",
+        options={"HIDDEN"},
+    )
 
     def execute(self, context):
         data = []
@@ -48,16 +56,16 @@ class AtomChipExporter(Operator, ExportHelper):
                 continue
 
             # Compute start and end along local X axis
-            start = obj.matrix_world @ mathutils.Vector((-0.5, 0, 0))
-            end = obj.matrix_world @ mathutils.Vector((0.5, 0, 0))
-
-            width, height = list(obj.scale[1:3])
+            start = obj.matrix_world @ mathutils.Vector((-0.5, 0, 0)) * 1e3  # m to mm
+            end = obj.matrix_world @ mathutils.Vector((0.5, 0, 0)) * 1e3  # m to mm
+            width = obj.scale[1] * 1e3  # m to mm
+            height = obj.scale[2] * 1e3  # m to mm
 
             item = {
-                "component_id": obj.get("component_id", -1),
-                "segment_id": obj.get("segment_id", -1),
-                "material": obj.get("material", "unknown"),
-                "current": round_nz(obj.get("current", 0.0)),
+                "component_id": obj.component_id,
+                "segment_id": obj.segment_id,
+                "material": obj.material,
+                "current": round_nz(obj.current),
                 "start": [round_nz(v, 3) for v in start],
                 "end": [round_nz(v, 3) for v in end],
                 "width": round_nz(width, 3),
@@ -96,7 +104,3 @@ def register():
 def unregister():
     bpy.utils.unregister_class(AtomChipExporter)
     bpy.types.TOPBAR_MT_file_export.remove(menu_func_export)
-
-
-if __name__ == "__main__":
-    register()
