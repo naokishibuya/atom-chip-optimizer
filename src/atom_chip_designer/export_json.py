@@ -1,37 +1,12 @@
-bl_info = {
-    "name": "Atom Chip Exporter",
-    "author": "Naoki Shibuya",
-    "version": (1, 0),
-    "blender": (4, 0, 0),  # depending on your Blender version
-    "location": "File > Export > Atom Chip Export (JSON)",
-    "description": "Export atom chip layout to JSON format",
-    "category": "Import-Export",
-}
+"""
+This script exports the layout of an atom chip as a JSON file.
+"""
 
-# ruff: noqa: E402
+# Note: bpy and mathutils are Blender's built-in modules (no need to install them).
 
-# Atom Chip Layout Exporter for Blender
-# ==========================================================
-# This script exports the layout of an atom chip as a JSON file.
-#
-# [Addon Registration]
-# 1. Edit -> Preferences
-# 2. Add-ons -> Install (dropdown menu @ top-right corner)
-# 3. Select this script
-#
-# [Addon Uninstallation]
-# You can enable/disable/delete it from the Add-ons tab
-#
-# [How to use]
-# To export the atom chip layout from Blender into a JSON file:
-# File > Export > Atom Chip Layout (.json)
-
-# Note: bpy and mathutils are part of the Blender Python API
-# This script is intended to be run inside Blender's scripting environment
-# and is not meant to be run as a standalone Python script.
+import json
 import bpy
 import mathutils
-import json
 from bpy.types import Operator
 from bpy_extras.io_utils import ExportHelper
 
@@ -47,6 +22,9 @@ class AtomChipExporter(Operator, ExportHelper):
     filter_glob: bpy.props.StringProperty(  # type: ignore[reportInvalidTypeForm]
         default="*.json",
         options={"HIDDEN"},
+    )
+    filename: bpy.props.StringProperty(  # type: ignore[reportInvalidTypeForm]
+        default="atom_chip_layout.json",
     )
 
     def execute(self, context):
@@ -91,9 +69,14 @@ def round_nz(value, precision=3):
 
 
 # === Menu Integration ===
+
+
 # This function adds the export option to the File > Export menu in Blender.
 def menu_func_export(self, context):
     self.layout.operator(AtomChipExporter.bl_idname, text="Atom Chip (.json)")
+
+
+# === Registration Management ===
 
 
 def register():
@@ -102,5 +85,5 @@ def register():
 
 
 def unregister():
-    bpy.utils.unregister_class(AtomChipExporter)
     bpy.types.TOPBAR_MT_file_export.remove(menu_func_export)
+    bpy.utils.unregister_class(AtomChipExporter)

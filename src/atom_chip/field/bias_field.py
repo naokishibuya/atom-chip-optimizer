@@ -29,3 +29,10 @@ class BiasFields:
 
     def get_fields(self, points: jnp.ndarray) -> jnp.ndarray:
         return jnp.tile(self.bias, (points.shape[0], 1))
+
+
+ZERO_BIAS_FIELD = BiasFields(
+    currents=(0.0, 0.0, 0.0),
+    coil_factors=(0.0, 0.0, 0.0),
+    stray_fields=(0.0, 0.0, 0.0),
+)
