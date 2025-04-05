@@ -70,7 +70,20 @@ def show(atom_chip: AtomChip, yaml_path: str):
         left += width + 10
         max_height = max(max_height, height)
 
-    plt.show()
+        # add a close event handler
+        fig.canvas.mpl_connect("close_event", close_handler)
+
+    print()
+    input("Press Any Kew to close the figures...\n\n")
+
+
+def close_handler(event):
+    window = event.canvas.window()
+    title = window.windowTitle()
+    print(f"Closed: '{title}'")
+    if len(plt.get_fignums()) == 1:
+        print("All figures closed. Exiting.")
+        exit()
 
 
 def _convert_scientific_notation(data) -> Any:
