@@ -55,11 +55,11 @@ class Frequency:
 @register_dataclass
 @dataclass
 class BECAnalysis:
-    radii: jnp.ndarray # Harmonic oscillator length in each direction [m]
-    a_ho : float       # Geometric mean of a_ho (average H.O. length) [m]
-    w_ho : float       # Geometric mean trap frequency (angular) [rad/s]
-    T_c  : float       # Critical temperature [K]
-    mu_0 : float       # Chemical potential in the non-interacting limit [J]
+    a_ho : float        # Geometric mean of a_ho (average H.O. length) [m]
+    w_ho : float        # Geometric mean trap frequency (angular) [rad/s]
+    mu_0 : float        # Chemical potential in the non-interacting limit [J]
+    radii: jnp.ndarray  # Harmonic oscillator length in each direction [m]
+    T_c  : float        # Critical temperature [K]
 # fmt: on
 
 
@@ -78,8 +78,8 @@ class BECAnalysis:
 @register_dataclass
 @dataclass
 class ThomasFermiAnalysis:
-    radii: jnp.ndarray    # Thomas-Fermi radii in each direction [m]
-    mu   : jnp.ndarray    # Thomas-Fermi chemical potential [J]
+    mu   : float        # Thomas-Fermi chemical potential [J]
+    radii: jnp.ndarray  # Thomas-Fermi radii in each direction [m]
 # fmt: on
 
 
@@ -248,11 +248,11 @@ def analyze_trap(
     )
     if options.verbose:
         print("BEC Analysis (Non-Interacting Limit):")
-        print("  Radii (m):", bec_analysis.radii)
         print("  a_ho (m):", bec_analysis.a_ho)
         print("  w_ho (rad/s):", bec_analysis.w_ho)
-        print("  T_c (K):", bec_analysis.T_c)
         print("  mu_0 (J):", bec_analysis.mu_0)
+        print("  Radii (m):", bec_analysis.radii)
+        print("  T_c (K):", bec_analysis.T_c)
 
     # Step 6: BEC Analysis (Thomas-Fermi Limit)
     tf_analysis = analyze_bec_thomas_fermi(
@@ -309,17 +309,17 @@ def analyze_bec_non_interacting(
     total_atoms: int,
 ) -> BECAnalysis:
     omega = trap_frequency.angular
-    omega_avg = jnp.prod(omega) ** (1 / 3)  # geometric mean
-    radii = jnp.sqrt(constants.hbar / (atom.mass * omega))
-    a_ho = jnp.sqrt(constants.hbar / (atom.mass * omega_avg))
-    T_c = 0.94 * constants.hbar * omega_avg / constants.kB * total_atoms ** (1 / 3)
+    w_ho = jnp.prod(omega) ** (1 / 3)  # geometric mean
+    a_ho = jnp.sqrt(constants.hbar / (atom.mass * w_ho))
     mu_0 = 0.5 * constants.hbar * jnp.sum(omega)  # ground state energy of the harmonic oscillator
+    radii = jnp.sqrt(constants.hbar / (atom.mass * omega))
+    T_c = 0.94 * constants.hbar / constants.kB * w_ho * total_atoms ** (1 / 3)
     return BECAnalysis(
-        radii=radii,
         a_ho=a_ho,
-        w_ho=omega_avg,
-        T_c=T_c,
+        w_ho=w_ho,
         mu_0=mu_0,
+        radii=radii,
+        T_c=T_c,
     )
 
 
@@ -331,8 +331,8 @@ def analyze_bec_thomas_fermi(
     condensed_atoms: int,
 ) -> ThomasFermiAnalysis:
     omega = trap_frequency.angular
-    omega_avg = jnp.prod(omega) ** (1 / 3)  # geometric mean
-    a_ho_avg = jnp.sqrt(constants.hbar / (atom.mass * omega_avg))
-    mu = 0.5 * constants.hbar * omega_avg * (15 * atom.a_s * condensed_atoms / a_ho_avg) ** (2 / 5)
+    w_ho = jnp.prod(omega) ** (1 / 3)  # geometric mean
+    a_ho = jnp.sqrt(constants.hbar / (atom.mass * w_ho))
+    mu = 0.5 * constants.hbar * w_ho * (15 * atom.a_s * condensed_atoms / a_ho) ** (2 / 5)
     radii = jnp.sqrt(2 * mu / atom.mass) / omega
     return ThomasFermiAnalysis(mu=mu, radii=radii)

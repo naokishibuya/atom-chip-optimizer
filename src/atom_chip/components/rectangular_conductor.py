@@ -1,4 +1,4 @@
-from typing import List, Optional, Tuple
+from typing import List, Tuple
 from dataclasses import dataclass
 import jax.numpy as jnp
 
@@ -29,15 +29,10 @@ class RectangularConductor:
         material: str,
         current: float,
         segments: List[RectangularSegment],
-        z_offset: Optional[float] = 0.0,
     ):
         self.material = material
         self.current = current
         self.starts, self.ends, self.widths, self.heights = map(jnp.float64, zip(*(segments)))
-
-        # apply z_offset to all segments
-        self.starts = self.starts.at[:, 2].add(z_offset)
-        self.ends = self.ends.at[:, 2].add(z_offset)
 
     @property
     def currents(self) -> jnp.ndarray:

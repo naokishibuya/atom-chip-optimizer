@@ -1,55 +1,120 @@
 import os
+from typing import Tuple
 import atom_chip as ac
 import jax
-from offsets import Offsets
 
 
 jax.config.update("jax_enable_x64", True)
 
 
-def build_atom_chip():
-    offsets = Offsets()
+# fmt: off
+#-------------------------------------------------------------
+# PCB - not used so it gives offsets only
+#-------------------------------------------------------------
+height_PCBLAYERTOP    : float = 0.07   # PCB Top Layer tickness (2 oz copper)
+height_PCBLAYERBOTTOM : float = 0.07   # PCB Bottom Layer tickness (2 oz copper)
+PCBCoreThickness      : float = 0.38   # 0.42; %0.38;
+
+#--------------------------------------------------------------
+# Copper Z
+#--------------------------------------------------------------
+# Gap between top face of Copper Z and top face of PCB (surface after QWP fell)
+CopperZ_gap           : float = 0.188 
+
+#-------------------------------------------------------------
+# Sidebars
+#-------------------------------------------------------------
+width_COPPERSIDEBARS  : float = 2.0  # Copper Sidebars width
+height_COPPERSIDEBARS : float = 1.0  # Copper Sidebars thickness
+
+#-------------------------------------------------------------
+# Bias fields
+#-------------------------------------------------------------
+# Coil Current [A] to Field [G] Conversion:
+Bias_X_CoilFactor  : float = -1.068  # [G/A]
+Bias_Y_CoilFactor  : float =  1.8    # [G/A]
+Bias_Z_CoilFactor  : float =  3.0    # [G/A]
+
+# Coil currents [A] to be applied to the external coils
+Bias_X_CoilCurrent : float = 17.4
+Bias_Y_CoilCurrent : float = 44.3
+Bias_Z_CoilCurrent : float = 0.0
+
+# PCB stray fields (G)
+Bias_X_StrayField  : float =  3.5
+Bias_Y_StrayField  : float = -0.1
+Bias_Z_StrayField  : float =  0.0
+
+
+def build_atom_chip(
+    pcb_height       : float = height_PCBLAYERTOP + PCBCoreThickness + height_PCBLAYERBOTTOM,
+    copper_z_gap     : float = CopperZ_gap,
+    copper_z_current : float = 85.0,
+    sidebar_width    : float = width_COPPERSIDEBARS,
+    sidebar_height   : float = height_COPPERSIDEBARS,
+    sizebar_current  : float = 0.0,
+    coil_factors     : Tuple[float, float, float] = (Bias_X_CoilFactor , Bias_Y_CoilFactor , Bias_Z_CoilFactor),
+    coil_currents    : Tuple[float, float, float] = (Bias_X_CoilCurrent, Bias_Y_CoilCurrent, Bias_Z_CoilCurrent),
+    stray_fields     : Tuple[float, float, float] = (Bias_X_StrayField , Bias_Y_StrayField , Bias_Z_StrayField),
+) -> ac.AtomChip:
+    # offsets
+    copper_z_offset = -(pcb_height + copper_z_gap)
+    sidebar_offset  = -(pcb_height + copper_z_gap + sidebar_height / 2)
+
+    # Copper Z wires
+    copper_z_wires = [
+        # [[start point], [end point], width, height]
+        [[ 0   , -40.2 , -127.5 ], [ 0   , -40.2 ,  -34.5 ], 3  , 3  ],
+        [[ 0   , -37.2 ,  -31.0 ], [ 0   , -25.0 ,  -31.0 ], 5  , 7  ],
+        [[ 0   , -22.5 ,  -27.5 ], [ 0   , -22.5 ,   -2.5 ], 3  , 3  ],
+        [[-3.25, -17.75,   -1.25], [-3.25,  -6.5 ,   -1.25], 1.5, 2.5],
+        [[-3.25,  -6.5 ,   -0.5 ], [-3.25,  -0.15,   -0.5 ], 1.5, 1  ],
+        [[-3.0 ,   0.0 ,   -0.5 ], [ 3.0 ,   0.0 ,   -0.5 ], 1.5, 1  ],
+        [[ 3.25,   0.15,   -0.5 ], [ 3.25,   6.5 ,   -0.5 ], 1.5, 1  ],
+        [[ 3.25,   6.5 ,   -1.25], [ 3.25,  17.75,   -1.25], 1.5, 2.5],
+        [[ 0   ,  22.5 ,   -2.5 ], [ 0   ,  22.5 ,  -27.5 ], 3  , 3  ],
+        [[ 0   ,  25.0 ,  -31.0 ], [ 0   ,  37.2 ,  -31.0 ], 5  , 7  ],
+        [[ 0   ,  40.2 ,  -34.5 ], [ 0   ,  40.2 , -127.5 ], 3  , 3  ],
+    ]
+
+    for wire in copper_z_wires:
+        wire[0][2] += copper_z_offset  # start point
+        wire[1][2] += copper_z_offset  # end point
+
+    copper_z = ac.components.RectangularConductor(
+        material = "copper",
+        current  = copper_z_current,
+        segments = copper_z_wires,
+    )
+
+    # Sidebars
+    sidebar_wires = [
+        # [[start point], [end point], width, height]
+        [[-10, -17, sidebar_offset], [-10, 17, sidebar_offset], sidebar_width, sidebar_height],
+        [[ 10, -17, sidebar_offset], [ 10, 17, sidebar_offset], sidebar_width, sidebar_height],
+    ]
+
+    sidebars = ac.components.RectangularConductor(
+        material = "copper",
+        current  = sizebar_current,
+        segments = sidebar_wires,
+    )
+
+    # Bias fields
+    bias_fields = ac.field.BiasFields(
+        currents     = coil_currents, # Currents applied to external coids [A]
+        coil_factors = coil_factors,  # Current to Field Conversion [G/A]
+        stray_fields = stray_fields,  # Stray field offsets [G]
+    )
+
     atom_chip = ac.AtomChip(
-        name="Copper Z",
-        atom=ac.rb87,
-        components=[
-            ac.components.RectangularConductor(
-                material="copper",
-                current=85.0,
-                segments=[
-                    # [[start point], [end point], width, height]
-                    [[0, -40.2, -127.5], [0, -40.2, -34.5], 3, 3],
-                    [[0, -37.2, -31.0], [0, -25.0, -31.0], 5, 7],
-                    [[0, -22.5, -27.5], [0, -22.5, -2.5], 3, 3],
-                    [[-3.25, -17.75, -1.25], [-3.25, -6.5, -1.25], 1.5, 2.5],
-                    [[-3.25, -6.5, -0.5], [-3.25, -0.15, -0.5], 1.5, 1],
-                    [[-3.0, 0.0, -0.5], [3.0, 0.0, -0.5], 1.5, 1],
-                    [[3.25, 0.15, -0.5], [3.25, 6.5, -0.5], 1.5, 1],
-                    [[3.25, 6.5, -1.25], [3.25, 17.75, -1.25], 1.5, 2.5],
-                    [[0, 22.5, -2.5], [0, 22.5, -27.5], 3, 3],
-                    [[0, 25.0, -31.0], [0, 37.2, -31.0], 5, 7],
-                    [[0, 40.2, -34.5], [0, 40.2, -127.5], 3, 3],
-                ],
-                z_offset=offsets.copper_z_offset,
-            ),
-            ac.components.RectangularConductor(
-                material="copper",
-                current=0.0,
-                segments=[
-                    # [[start point], [end point], width, height]
-                    [[-10, -17, 0], [-10, 17, 0], 2, 1],
-                    [[10, -17, 0], [10, 17, 0], 2, 1],
-                ],
-                z_offset=offsets.copper_sidebars_offset,
-            ),
-        ],
-        bias_fields=ac.field.BiasFields(
-            currents=[17.4, 44.3, 0.0],  # Currents applied to external coids [A]
-            coil_factors=[-1.068, 1.8, 3.0],  # Current to Field Conversion [G/A]
-            stray_fields=[3.5, -0.1, 0.0],  # Stray field offsets [G]
-        ),
+        name = "Copper Z",
+        atom = ac.rb87,
+        components = [copper_z, sidebars],
+        bias_fields = bias_fields,
     )
     return atom_chip
+# fmt: on
 
 
 def main():
@@ -73,8 +138,8 @@ def main():
             # hessian_step = 1e-5,  # Step size for Hessian calculation
         ),
         # for the trap analayis (not used for field analysis)
-        total_atoms=1e6,
-        condensed_atoms=1e4,
+        total_atoms=1e5,
+        condensed_atoms=5e4,
         verbose = True,
     )
     # fmt: on
