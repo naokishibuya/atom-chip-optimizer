@@ -1,6 +1,7 @@
 from typing import List
 import pandas as pd
 import json
+import time
 import jax.numpy as jnp
 from .components import RectangularConductor, RectangularSegment
 from .field import BiasFields, biot_savart_rectangular
@@ -87,8 +88,11 @@ class AtomChip:
         Returns:
             TrapAnalysis: Result of the trap potential analysis.
         """
+        start_time = time.time()
         self.field = analyze_field(self.atom, self.get_fields, options)
         self.trap = analyze_trap(self.atom, self.get_potentials, options)
+        end_time = time.time()
+        print(f"Analysis completed in {end_time - start_time:.2f} seconds")
         return self.trap
 
     def to_json(self, path: str = None) -> str:

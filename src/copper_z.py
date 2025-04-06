@@ -1,10 +1,6 @@
 import os
 from typing import Tuple
 import atom_chip as ac
-import jax
-
-
-jax.config.update("jax_enable_x64", True)
 
 
 # fmt: off

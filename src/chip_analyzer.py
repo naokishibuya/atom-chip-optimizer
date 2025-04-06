@@ -1,9 +1,5 @@
 import os
 import atom_chip as ac
-import jax
-
-
-jax.config.update("jax_enable_x64", True)
 
 
 def main():
