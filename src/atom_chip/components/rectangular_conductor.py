@@ -1,4 +1,4 @@
-from typing import List, Tuple
+from typing import List, Tuple, Union
 from dataclasses import dataclass
 import jax
 import jax.numpy as jnp
@@ -7,10 +7,14 @@ import jax.numpy as jnp
 jax.config.update("jax_enable_x64", True)
 
 
+# Define PositionType for clarity
+PositionType = Tuple[float, float, float]
+
+
 @dataclass
 class RectangularSegment:
-    start: Tuple[float, float, float]
-    end: Tuple[float, float, float]
+    start: PositionType
+    end: PositionType
     width: float
     height: float
 
@@ -19,20 +23,28 @@ class RectangularSegment:
         return iter((self.start, self.end, self.width, self.height))
 
 
+# Define a type alias for flexibility in input formats
+RectangularSegmentType = Union[
+    RectangularSegment,
+    Tuple[PositionType, PositionType, float, float],
+]
+
+
 class RectangularConductor:
     """
     A wire segment in 3D space defined by a rectangular cross-section.
 
     Attributes:
-        segments (List[Rectangular3D]): List of rectangular segments in millimeters (mm).
+        material (str): Material of the wire segment.
         current (float): Current flowing through the wire in Amperes (A).
+        segments (List[RectangularSegmentType]): List of rectangular segments in millimeters (mm).
     """
 
     def __init__(
         self,
         material: str,
         current: float,
-        segments: List[RectangularSegment],
+        segments: List[RectangularSegmentType],
     ):
         self.material = material
         self.current = current
