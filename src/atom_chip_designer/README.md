@@ -46,9 +46,9 @@ This Blender add-on allows you to import, visualize, edit, and export atom chip 
 
 If the add-on includes wire creation tools:
 
-- Use the Add Wire panel in the N-panel (right side of 3D Viewport)
-- Define start and end points, width/height, current, and material
-- Click Add Wire to insert it into the scene with proper metadata
+- Hit `N` to open the N-panel (right side of the 3D Viewport) if not already visible
+- Select the `AtomChip` tab to show `Atom Chip Tools` panel
+- Click Add Atom Chip Wire to insert a new wire
 
 ### Tips
 

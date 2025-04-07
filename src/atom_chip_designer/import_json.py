@@ -9,6 +9,7 @@ import bpy
 import mathutils
 from bpy.types import Operator
 from bpy_extras.io_utils import ImportHelper
+from .properties import add_rectangular_conductor
 
 
 class AtomChipImporter(Operator, ImportHelper):
@@ -50,17 +51,15 @@ class AtomChipImporter(Operator, ImportHelper):
                 print(f"[{component_id}, {segment_id}] Start: {start}, End: {end}, Center: {center}, Length: {length}")
                 continue
 
-            bpy.ops.mesh.primitive_cube_add(size=1, location=(0, 0, 0))
-            obj = bpy.context.active_object
-            obj.component_id = component_id
-            obj.segment_id = segment_id
-            obj.location = center
-            obj.scale = (length, width, height)  # Scale the cube in the x, y, z directions
-            obj.rotation_mode = "QUATERNION"
-            # Rotate the object at the origin to align with the direction (start to end)
-            obj.rotation_quaternion = mathutils.Vector((1, 0, 0)).rotation_difference(direction)
-            obj.material = material
-            obj.current = current
+            add_rectangular_conductor(
+                component_id,
+                segment_id,
+                material,
+                current,
+                center,
+                (length, width, height),
+                direction,
+            )
 
         return {"FINISHED"}
 
