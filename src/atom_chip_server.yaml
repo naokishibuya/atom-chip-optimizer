@@ -1,0 +1,83 @@
+top: 50
+left: 80
+plots:
+  - layout_3d
+  - potential_1d
+  - potential_2d
+  - potential_2d_zoom_in
+  - potential_2d_surface
+  - potential_3d
+  - potential_3d_surface
+  - potential_3d_animate
+
+layout_3d:
+  function: plot_layout_3d
+  params:
+    title: Atom Chip Layout
+    size: [5, 5]
+    azim: -140  # Azimuth angle
+    elev: 20    # Elevation angle
+    tick: 20
+
+potential_1d:
+  function: plot_potential_1d
+  params:
+    size: [6, 5]
+    z_range: [0, 2, 200]  # 100 ticks from 0 to 2
+
+potential_2d:
+  function: plot_potential_2d
+  params:
+    size: [6, 5]
+    x_range: [-3.0, 3.0, 200]
+    y_range: [-3.0, 3.0, 200]
+    zlim: [0, 6500]
+    isosurface_level: 5
+    quiver: true
+
+potential_2d_zoom_in:
+  function: plot_potential_2d
+  params:
+    size: [6, 5]
+    x_range: [-1.0, 1.0, 200]
+    y_range: [-1.0, 1.0, 200]
+    zlim: [0, 6500]
+    isosurface_level: 5
+    quiver: false
+
+potential_2d_surface:
+  function: plot_potential_2d
+  params:
+    size: [6, 5]
+    x_range: [-3.0, 3.0, 200]
+    y_range: [-3.0, 3.0, 200]
+    z: 0
+    zlim: [0, 6500]
+    isosurface_level: 2150
+    quiver: false 
+
+potential_3d:
+  function: plot_potential_3d
+  params:
+    size: [7, 6]
+    x_range: [-3.0, 3.0, 200]
+    y_range: [-3.0, 3.0, 200]
+    zlim: [0, 6500]
+
+potential_3d_surface:
+  function: plot_potential_3d
+  params:
+    size: [7, 6]
+    x_range: [-3.0, 3.0, 200]
+    y_range: [-3.0, 3.0, 200]
+    z: 0
+    zlim: [0, 6500]
+
+potential_3d_animate:
+  function: plot_potential_3d
+  params:
+    size: [7, 6]
+    x_range: [-3.0, 3.0, 200]
+    y_range: [-3.0, 3.0, 200]
+    z_range: [ 0.0, 2.0,  10]
+    zlim: [0, 6500]

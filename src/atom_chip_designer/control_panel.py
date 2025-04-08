@@ -4,10 +4,12 @@ This script adds a wire component in Blender.
 
 # Note: bpy and mathutils are Blender's built-in modules (no need to install them).
 
+import requests
 import bpy
 from bpy.types import Operator, Panel
 from bpy.props import FloatProperty, EnumProperty
 from mathutils import Vector
+from .export_json import export_atom_chip_layout
 from .properties import MATERIAL_ENUM_ITEMS, DEFAULT_MATERIAL, add_rectangular_conductor
 
 
@@ -18,6 +20,20 @@ DEFAULT_WIDTH  = 0.001  # 1 mm
 DEFAULT_HEIGHT = 0.001  # 1 mm
 STEP = 0.001  # 1 mm
 # fmt: on
+
+
+class AtomChipToolsPanel(Panel):
+    bl_label = "Atom Chip Tools"
+    bl_idname = "OBJECT_PT_atom_chip_tools"
+    bl_space_type = "VIEW_3D"
+    bl_region_type = "UI"
+    bl_category = "AtomChip"
+
+    def draw(self, context):
+        layout = self.layout
+        layout.operator("object.add_atom_chip_wire", icon="MESH_CUBE")
+        layout.prop(context.scene, "show_atom_chip_markers")  # toggle visibility of markers
+        layout.operator("atom_chip.run_simulation", icon="PLAY")
 
 
 class AtomChipWireAdder(Operator):
@@ -102,22 +118,31 @@ class AtomChipWireAdder(Operator):
         return context.window_manager.invoke_props_dialog(self)
 
 
-class AtomChipToolsPanel(Panel):
-    bl_label = "Atom Chip Tools"
-    bl_idname = "OBJECT_PT_atom_chip_tools"
-    bl_space_type = "VIEW_3D"
-    bl_region_type = "UI"
-    bl_category = "AtomChip"
+class RunSimulationOperator(bpy.types.Operator):
+    bl_idname = "atom_chip.run_simulation"
+    bl_label = "Run Simulation"
+    bl_description = "Send current layout to simulation server"
 
-    def draw(self, context):
-        layout = self.layout
-        layout.operator("object.add_atom_chip_wire", icon="MESH_CUBE")
-        layout.prop(context.scene, "show_atom_chip_markers")  # toggle visibility of markers
+    def execute(self, context):
+        # Collect layout data
+        layout = export_atom_chip_layout()
+
+        # Send to simulation server
+        try:
+            response = requests.post("http://127.0.0.1:8000/simulate", json=layout, timeout=3)
+            if response.ok:
+                self.report({"INFO"}, "Simulation request sent!")
+            else:
+                self.report({"ERROR"}, f"Simulation failed: {response.text}")
+        except Exception as e:
+            self.report({"ERROR"}, f"Request failed: {str(e)}")
+
+        return {"FINISHED"}
 
 
 # === Registration Management ===
 
-classes = [AtomChipWireAdder, AtomChipToolsPanel]
+classes = [AtomChipWireAdder, AtomChipToolsPanel, RunSimulationOperator]
 
 
 def register():

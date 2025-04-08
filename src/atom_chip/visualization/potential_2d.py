@@ -16,6 +16,7 @@ def plot_potential_2d(
     isosurface_level: Optional[float] = None,
     quiver: Optional[bool] = False,
     cmap: Optional[str] = "jet",
+    fig: Optional[plt.Figure] = None,
 ):
     if not atom_chip.trap.minimum.found:
         print("Minimum not found. Cannot plot potential.")
@@ -35,7 +36,11 @@ def plot_potential_2d(
     T = constants.joule_to_microKelvin(E)
 
     # create figure
-    fig, ax = plt.subplots(figsize=size)
+    if fig is None:
+        fig = plt.figure(figsize=size)
+    else:
+        fig.clear()
+    ax = fig.add_subplot(111)
     img = ax.imshow(
         T,
         extent=(x_range[0], x_range[1], y_range[0], y_range[1]),

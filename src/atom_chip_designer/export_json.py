@@ -11,6 +11,34 @@ from bpy.types import Operator
 from bpy_extras.io_utils import ExportHelper
 
 
+def export_atom_chip_layout() -> list[dict]:
+    layout = []
+    for obj in bpy.data.objects:
+        if obj.type != "MESH":
+            continue
+        if obj.parent:
+            continue  # Skip child objects (like markers)
+
+        # Compute start and end along local X axis
+        start = obj.matrix_world @ mathutils.Vector((-0.5, 0, 0)) * 1e3  # m to mm
+        end = obj.matrix_world @ mathutils.Vector((0.5, 0, 0)) * 1e3  # m to mm
+        width = obj.scale[1] * 1e3  # m to mm
+        height = obj.scale[2] * 1e3  # m to mm
+
+        item = {
+            "component_id": obj.component_id,
+            "segment_id": obj.segment_id,
+            "material": obj.material,
+            "current": round_nz(obj.current),
+            "start": [round_nz(v, 3) for v in start],
+            "end": [round_nz(v, 3) for v in end],
+            "width": round_nz(width, 3),
+            "height": round_nz(height, 3),
+        }
+        layout.append(item)
+    return layout
+
+
 class AtomChipExporter(Operator, ExportHelper):
     """Export Atom Chip Layout as JSON"""
 
@@ -28,33 +56,11 @@ class AtomChipExporter(Operator, ExportHelper):
     )
 
     def execute(self, context):
-        data = []
-        for obj in bpy.data.objects:
-            if obj.type != "MESH":
-                continue
-
-            # Compute start and end along local X axis
-            start = obj.matrix_world @ mathutils.Vector((-0.5, 0, 0)) * 1e3  # m to mm
-            end = obj.matrix_world @ mathutils.Vector((0.5, 0, 0)) * 1e3  # m to mm
-            width = obj.scale[1] * 1e3  # m to mm
-            height = obj.scale[2] * 1e3  # m to mm
-
-            item = {
-                "component_id": obj.component_id,
-                "segment_id": obj.segment_id,
-                "material": obj.material,
-                "current": round_nz(obj.current),
-                "start": [round_nz(v, 3) for v in start],
-                "end": [round_nz(v, 3) for v in end],
-                "width": round_nz(width, 3),
-                "height": round_nz(height, 3),
-            }
-            data.append(item)
-
+        layout = export_atom_chip_layout()
         with open(self.filepath, "w") as f:
-            json.dump(data, f, indent=2)
+            json.dump(layout, f, indent=2)
 
-        self.report({"INFO"}, f"Exported {len(data)} components to {self.filepath}")
+        self.report({"INFO"}, f"Exported {len(layout)} components to {self.filepath}")
         return {"FINISHED"}
 
     def invoke(self, context, event):

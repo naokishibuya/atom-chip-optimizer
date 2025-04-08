@@ -10,10 +10,10 @@ bl_info = {
 
 # ruff: noqa: E402
 
-from . import properties, import_json, export_json, add_wire
+from . import properties, import_json, export_json, control_panel
 
 
-modules = (properties, import_json, export_json, add_wire)
+modules = (properties, import_json, export_json, control_panel)
 
 
 def register():

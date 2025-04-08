@@ -15,6 +15,7 @@ def plot_potential_3d(
     z_range: Optional[Tuple[float, float]] = None,
     z: Optional[float] = None,
     zlim: Optional[Tuple[float, float]] = None,
+    fig: Optional[plt.Figure] = None,
 ):
     if not atom_chip.trap.minimum.found:
         print("Minimum not found. Cannot plot potential.")
@@ -24,7 +25,13 @@ def plot_potential_3d(
     y_vals = np.linspace(*y_range)
     X, Y = np.meshgrid(x_vals, y_vals)
 
-    fig = plt.figure(figsize=size)
+    if fig is None:
+        fig = plt.figure(figsize=size)
+    else:
+        if fig._anim is not None:
+            fig._anim.event_source.stop()
+            fig._anim = None
+        fig.clear()
     ax = fig.add_subplot(111, projection="3d")
 
     if z_range is not None:
@@ -40,7 +47,7 @@ def plot_potential_3d(
             return (surf,)
 
         # keep the animation object alive
-        fig.anim = FuncAnimation(fig, update, frames=len(z_vals), interval=1000, blit=False)
+        fig._anim = FuncAnimation(fig, update, frames=len(z_vals), interval=1000, blit=False)
         surf = update(0)[0]
     else:
         # Plot 3D trapping potential at a fixed z value

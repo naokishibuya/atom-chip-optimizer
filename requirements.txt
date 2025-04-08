@@ -9,3 +9,6 @@ optax==0.2.4
 matplotlib==3.10.1
 PyQt5==5.15.11
 PyYAML==6.0.2
+# server
+fastapi==0.115.12
+uvicorn==0.34.0

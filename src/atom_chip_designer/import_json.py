@@ -28,8 +28,7 @@ class AtomChipImporter(Operator, ImportHelper):
             data = json.load(f)
 
         # Clear existing objects
-        bpy.ops.object.select_all(action="SELECT")
-        bpy.ops.object.delete(use_global=False)
+        clear_atom_chip_objects()
 
         for component in data:
             component_id = component["component_id"]
@@ -61,7 +60,15 @@ class AtomChipImporter(Operator, ImportHelper):
                 direction,
             )
 
+        # Deselect all objects
+        bpy.ops.object.select_all(action="DESELECT")
+
         return {"FINISHED"}
+
+
+def clear_atom_chip_objects():
+    for obj in bpy.data.objects:
+        bpy.data.objects.remove(obj, do_unlink=True)
 
 
 # === Menu Integration ===

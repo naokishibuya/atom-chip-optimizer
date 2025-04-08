@@ -1,4 +1,4 @@
-from typing import Tuple
+from typing import Optional, Tuple
 import matplotlib.pyplot as plt
 import numpy as np
 from ..atom_chip import AtomChip
@@ -9,6 +9,7 @@ def plot_potential_1d(
     atom_chip: AtomChip,
     size: Tuple[int, int],
     z_range: Tuple[float, float, int],
+    fig: Optional[plt.Figure] = None,
 ):
     if not atom_chip.trap.minimum.found:
         print("Minimum not found. Cannot plot potential.")
@@ -21,7 +22,11 @@ def plot_potential_1d(
     points = np.array([[x, y, z] for z in z_vals])
     E, B_mag, _ = atom_chip.get_potentials(points)
 
-    fig, ax1 = plt.subplots(figsize=size)
+    if fig is None:
+        fig = plt.figure(figsize=size)
+    else:
+        fig.clear()
+    ax1 = fig.add_subplot(111)
     fig.gca().grid()
 
     # Magnetic field

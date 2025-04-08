@@ -131,14 +131,18 @@ class AtomChip:
     def from_json(self, path: str):
         """
         Load the AtomChip from a JSON file.
-
-        This simply loads the components from the JSON file.
-        The atom and bias fields are not loaded (they remain unchanged).
-        Any analysis results are cleared.
         """
         with open(path, "r") as f:
             data = json.load(f)
+        self.process_json(data)
 
+    def process_json(self, data: List[dict]):
+        """
+        Load the AtomChip from a JSON data.
+
+        The atom and bias fields are not loaded (they remain unchanged).
+        Any analysis results are cleared.
+        """
         # load and sort the data by component_id and segment_id
         data_df = pd.DataFrame(data)
         data_df = data_df.sort_values(by=["component_id", "segment_id"]).reset_index(drop=True)

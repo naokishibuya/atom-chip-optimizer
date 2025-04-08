@@ -1,7 +1,10 @@
-import argparse
 import yaml
+import sys
 from typing import Any
 import matplotlib
+
+matplotlib.use("Qt5Agg")
+
 import matplotlib.pyplot as plt
 from PyQt5.QtWidgets import QApplication
 from ..atom_chip import AtomChip
@@ -11,79 +14,106 @@ from .potential_2d import plot_potential_2d
 from .potential_3d import plot_potential_3d
 
 
-matplotlib.use("Qt5Agg")
-
-
 __all__ = [
     "show",
     "plot_layout_3d",
     "plot_potential_1d",
     "plot_potential_2d",
     "plot_potential_3d",
+    "Visualizer",
 ]
 
 
-# Function to show the layout of the atom chip using a YAML configuration file
+QApplication.instance()  # Initialize QApplication if not already done
+
+
 def show(atom_chip: AtomChip, yaml_path: str):
     # Parse command-line arguments
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--no-show", action="store_true", help="Do not show the visualization")
-    args = parser.parse_args()
-    if args.no_show:
+    if "--no-show" in sys.argv:
         return
 
-    # Load the YAML file
-    with open(yaml_path, "r", encoding="utf-8") as file:
-        data = yaml.safe_load(file)
-    data = _convert_scientific_notation(data)
-
-    # Load plot function and call it
-    figs = []
-    for plot_name in data["plots"]:
-        plot_config = data[plot_name]
-        function = eval(plot_config["function"])
-        params = plot_config.get("params", {})
-        fig = function(atom_chip, **params)
-        figs.append(fig)
-
-    # Get the screen size
-    screen_width, screen_height = QApplication.desktop().screenGeometry().getRect()[2:]
-
-    # Initialize the top-left position
-    top = data.get("top", 0)
-    left = data.get("left", 0)
-    top_left = (top, left)
-
-    # Set the geometry of each figure
-    max_height = 0
-    for fig in figs:
-        window = fig.canvas.manager.window
-        width, height = window.geometry().getRect()[2:]
-        if left + width > screen_width:
-            left = top_left[1]
-            top += max_height + 50
-            max_height = 0
-            if top + height > screen_height:
-                top = top_left[0]
-        window.setGeometry(left, top, width, height)
-        fig.show()
-        left += width + 10
-        max_height = max(max_height, height)
-
-        # add a close event handler
-        fig.canvas.mpl_connect("close_event", close_handler)
+    # Visualize atom chip layout and analytics
+    visualizer = Visualizer(yaml_path)
+    visualizer.update(atom_chip)
 
     print()
     input("Press Any Kew to close the figures...\n\n")
 
 
-def close_handler(event):
-    window = event.canvas.window()
-    title = window.windowTitle()
-    print(f"Closed: '{title}'")
-    if len(plt.get_fignums()) == 1:
-        print("All figures closed. Exiting.")
-        exit()
+class Visualizer:
+    def __init__(self, config_path: str):
+        self._plot_windows = {}
+        self._config = _load_config(config_path)
+        self._is_alive = True
+
+        # Initialize the top-left position
+        self._global_top = self._config.get("top", 0)
+        self._global_left = self._config.get("left", 0)
+        self._top = self._global_top
+        self._left = self._global_left
+
+    @property
+    def is_alive(self):
+        return self._is_alive
+
+    def update(self, atom_chip: AtomChip):
+        plt.ion()
+        for plot_name in self._config["plots"]:
+            plot_config = self._config[plot_name]
+            try:
+                self._update_plot(plot_name, atom_chip, plot_config)
+            except Exception as e:
+                print(f"Error updating plot '{plot_name}': {e}")
+        plt.draw()
+        plt.pause(0.5)
+
+    def _update_plot(self, name: str, atom_chip: AtomChip, plot_config: dict):
+        function = eval(plot_config["function"])
+        params = plot_config.get("params", {})
+
+        if name in self._plot_windows:
+            # Update the existing figure
+            fig = self._plot_windows[name]
+            function(atom_chip, fig=fig, **params)
+        else:
+            # Create a new figure if it doesn't exist and register the close event
+            fig = function(atom_chip, **params)
+            self._initialize_position(fig)
+            self._plot_windows[name] = fig
+            fig.canvas.mpl_connect("close_event", self._close_handler)
+
+    def _initialize_position(self, fig):
+        # Get the screen size
+        screen_width, screen_height = QApplication.desktop().screenGeometry().getRect()[2:]
+        window = fig.canvas.manager.window
+        width, height = window.geometry().getRect()[2:]
+        top, left = self._top, self._left
+        if left + width > screen_width:
+            top = self._global_top + height + 50
+            left = self._global_left
+            if top + height > screen_height:
+                top = self._global_top
+        window.setGeometry(left, top, width, height)
+        self._top = top
+        self._left = left + width + 10
+
+    def _close_handler(self, event):
+        title = event.canvas.manager.get_window_title()
+        print(f"Closed: '{title}'")
+        for key, fig in list(self._plot_windows.items()):
+            if fig.canvas.manager.get_window_title() == title:
+                del self._plot_windows[key]
+                break
+        if not self._plot_windows:
+            print("All figures closed.")
+            self.is_alive = False
+
+
+def _load_config(yaml_path: str):
+    with open(yaml_path, "r", encoding="utf-8") as file:
+        config = yaml.safe_load(file)
+    config = _convert_scientific_notation(config)
+    return config
 
 
 def _convert_scientific_notation(data) -> Any:

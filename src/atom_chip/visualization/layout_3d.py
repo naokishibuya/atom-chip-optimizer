@@ -17,8 +17,12 @@ def plot_layout_3d(
     ylim: Optional[Tuple[float, float]] = None,
     zlim: Optional[Tuple[float, float]] = None,
     tick: Optional[Union[float, List[float]]] = None,
+    fig: Optional[plt.Figure] = None,
 ):
-    fig = plt.figure(figsize=size)
+    if fig is None:
+        fig = plt.figure(figsize=size)
+    else:
+        fig.clear()
     ax = fig.add_subplot(111, projection="3d", computed_zorder=compute_zorder)
 
     # plot the atom chip components
