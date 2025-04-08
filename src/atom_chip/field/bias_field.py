@@ -9,30 +9,42 @@ class BiasFields:
 
     def __init__(
         self,
-        currents: Tuple[float, float, float],
         coil_factors: Tuple[float, float, float],
+        currents: Tuple[float, float, float],
         stray_fields: Tuple[float, float, float],
     ):
         """
         Initialize the bias field object.
 
         Args:
-            currents: Currents for x, y, z bias fields.
-            coil_factors: Coil factors for x, y, z bias fields.
-            stray_fields: Stray fields for x, y, z bias fields.
+            coil_factors: Coil factors for x, y, z bias fields. [G/A]
+            currents: Currents for x, y, z bias fields. [A]
+            stray_fields: Stray fields for x, y, z bias fields. [G]
         """
-        currents = jnp.float64(currents)
-        coil_factors = jnp.float64(coil_factors)
-        stray_fields = jnp.float64(stray_fields)
-
-        self.bias = currents * coil_factors + stray_fields
+        self.coil_factors = jnp.float64(coil_factors)
+        self.currents = jnp.float64(currents)
+        self.stray_fields = jnp.float64(stray_fields)
+        self.bias = self.coil_factors * self.currents + self.stray_fields
 
     def get_fields(self, points: jnp.ndarray) -> jnp.ndarray:
         return jnp.tile(self.bias, (points.shape[0], 1))
 
+    def to_dict(self) -> dict:
+        return {
+            "coil_factors": self.coil_factors.tolist(),
+            "currents": self.currents.tolist(),
+            "stray_fields": self.stray_fields.tolist(),
+        }
+
+    def from_dict(self, data: dict):
+        self.coil_factors = jnp.float64(data["coil_factors"])
+        self.currents = jnp.float64(data["currents"])
+        self.stray_fields = jnp.float64(data["stray_fields"])
+        self.bias = self.coil_factors * self.currents + self.stray_fields
+
 
 ZERO_BIAS_FIELD = BiasFields(
-    currents=(0.0, 0.0, 0.0),
     coil_factors=(0.0, 0.0, 0.0),
+    currents=(0.0, 0.0, 0.0),
     stray_fields=(0.0, 0.0, 0.0),
 )

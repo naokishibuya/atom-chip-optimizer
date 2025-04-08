@@ -12,7 +12,7 @@ from bpy_extras.io_utils import ExportHelper
 
 
 def export_atom_chip_layout() -> list[dict]:
-    layout = []
+    wires = []
     for obj in bpy.data.objects:
         if obj.type != "MESH":
             continue
@@ -35,7 +35,33 @@ def export_atom_chip_layout() -> list[dict]:
             "width": round_nz(width, 3),
             "height": round_nz(height, 3),
         }
-        layout.append(item)
+        wires.append(item)
+
+    # Add bias fields
+    # fmt: off
+    scene = bpy.context.scene
+    bias_fields = {
+        "coil_factors": [
+            round_nz(scene.bias_coil_factors_x, 3),
+            round_nz(scene.bias_coil_factors_y, 3),
+            round_nz(scene.bias_coil_factors_z, 3),
+        ],
+        "currents": [
+            round_nz(scene.bias_currents_x, 3),
+            round_nz(scene.bias_currents_y, 3),
+            round_nz(scene.bias_currents_z, 3),
+        ],
+        "stray_fields": [
+            round_nz(scene.bias_stray_fields_x, 3),
+            round_nz(scene.bias_stray_fields_y, 3),
+            round_nz(scene.bias_stray_fields_z, 3),
+        ],
+    }
+    # fmt: on
+    layout = {
+        "wires": wires,
+        "bias_fields": bias_fields,
+    }
     return layout
 
 

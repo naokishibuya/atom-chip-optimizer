@@ -88,6 +88,7 @@ class AtomChip:
         Returns:
             TrapAnalysis: Result of the trap potential analysis.
         """
+        print(f"Bias fields: {self.bias_fields.to_dict()}")
         start_time = time.time()
         self.field = analyze_field(self.atom, self.get_fields, options)
         self.trap = analyze_trap(self.atom, self.get_potentials, options)
@@ -101,7 +102,7 @@ class AtomChip:
          - If a path is provided, the JSON is saved to that file.
          - Otherwise, the JSON string is returned.
         """
-        data = []
+        wires = []
         for component_id, component in enumerate(self.components):
             segment_id = 0
             for start, end, width, height in zip(
@@ -110,7 +111,7 @@ class AtomChip:
                 component.widths.tolist(),
                 component.heights.tolist(),
             ):
-                data.append(
+                wires.append(
                     {
                         "component_id": component_id,
                         "segment_id": segment_id,
@@ -123,6 +124,10 @@ class AtomChip:
                     }
                 )
                 segment_id += 1
+        data = {
+            "wires": wires,
+            "bias_fields": self.bias_fields.to_dict(),
+        }
         if path:
             with open(path, "w") as f:
                 json.dump(data, f, indent=2)
@@ -143,13 +148,15 @@ class AtomChip:
         The atom and bias fields are not loaded (they remain unchanged).
         Any analysis results are cleared.
         """
+
         # load and sort the data by component_id and segment_id
-        data_df = pd.DataFrame(data)
-        data_df = data_df.sort_values(by=["component_id", "segment_id"]).reset_index(drop=True)
+        wires = data["wires"]
+        wires_df = pd.DataFrame(wires)
+        wires_df = wires_df.sort_values(by=["component_id", "segment_id"]).reset_index(drop=True)
 
         # iterate over the components and create a list of RectangularConductor objects
         self.components = []
-        for component_id, group in data_df.groupby("component_id"):
+        for component_id, group in wires_df.groupby("component_id"):
             segments = []
             for _, row in group.iterrows():
                 segments.append(
@@ -168,6 +175,11 @@ class AtomChip:
                 segments = segments,
             ))
             # fmt: on
+
+        # load the bias fields
+        if "bias_fields" in data:
+            bias_fields = data["bias_fields"]
+            self.bias_fields.from_dict(bias_fields)
 
         # Clear the analysis results
         self.field = None

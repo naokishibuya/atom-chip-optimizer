@@ -39,26 +39,13 @@ options = ac.potential.AnalysisOptions(
 )
 # fmt: on
 
-# TODO
-bias_fields = ac.field.BiasFields(
-    coil_factors=[-1.068, 1.8, 3.0],  # [G/A]
-    currents=[17.4, 44.3, 0.0],  # [A]
-    stray_fields=[3.5, -0.1, 0.0],  # [G]
-)
-
-bias_fields = ac.field.BiasFields(
-    coil_factors=[-1.068, 1.8, 3.0],  # [G/A]
-    currents=[0.0, 0.0, 0.0],  # [A]
-    stray_fields=[1.0, 1.0, 0.0],  # [G]
-)
-
 # Build the atom chip
 # fmt: off
 atom_chip = ac.AtomChip(
     name        = "Atom Chip Analyzer",
     atom        = ac.rb87,
     components  = [],
-    bias_fields = bias_fields,
+    bias_fields = ac.field.ZERO_BIAS_FIELD,
 )
 # fmt: on
 

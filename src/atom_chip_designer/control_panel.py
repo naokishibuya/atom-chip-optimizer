@@ -31,8 +31,31 @@ class AtomChipToolsPanel(Panel):
 
     def draw(self, context):
         layout = self.layout
+        scene = context.scene
+
+        layout.label(text="Wires:")
         layout.operator("object.add_atom_chip_wire", icon="MESH_CUBE")
-        layout.prop(context.scene, "show_atom_chip_markers")  # toggle visibility of markers
+        layout.prop(scene, "show_atom_chip_markers")  # toggle visibility of markers
+
+        layout.separator()
+        layout.label(text="Bias Fields:")
+
+        layout.label(text="Coil Factors [G/A]")
+        layout.prop(scene, "bias_coil_factors_x")
+        layout.prop(scene, "bias_coil_factors_y")
+        layout.prop(scene, "bias_coil_factors_z")
+
+        layout.label(text="Currents [A]")
+        layout.prop(scene, "bias_currents_x")
+        layout.prop(scene, "bias_currents_y")
+        layout.prop(scene, "bias_currents_z")
+
+        layout.label(text="Stray Fields [G]")
+        layout.prop(scene, "bias_stray_fields_x")
+        layout.prop(scene, "bias_stray_fields_y")
+        layout.prop(scene, "bias_stray_fields_z")
+
+        layout.separator()
         layout.operator("atom_chip.run_simulation", icon="PLAY")
 
 
@@ -40,7 +63,7 @@ class AtomChipWireAdder(Operator):
     """Add a new atom chip wire component"""
 
     bl_idname = "object.add_atom_chip_wire"
-    bl_label = "Add Atom Chip Wire"
+    bl_label = "Add Wire"
     bl_options = {"REGISTER", "UNDO"}
 
     # === Properties to appear in the pop-up dialog ===
@@ -146,6 +169,7 @@ classes = [AtomChipWireAdder, AtomChipToolsPanel, RunSimulationOperator]
 
 
 def register():
+    register_bias_field_props()
     for cls in classes:
         bpy.utils.register_class(cls)
 
@@ -153,3 +177,31 @@ def register():
 def unregister():
     for cls in reversed(classes):
         bpy.utils.unregister_class(cls)
+    unregister_bias_field_props()
+
+
+# Add properties to the Scene type
+def register_bias_field_props():
+    bpy.types.Scene.bias_coil_factors_x = bpy.props.FloatProperty(name="Coil X", default=0.0)
+    bpy.types.Scene.bias_coil_factors_y = bpy.props.FloatProperty(name="Coil Y", default=0.0)
+    bpy.types.Scene.bias_coil_factors_z = bpy.props.FloatProperty(name="Coil Z", default=0.0)
+
+    bpy.types.Scene.bias_currents_x = bpy.props.FloatProperty(name="Current X", default=0.0)
+    bpy.types.Scene.bias_currents_y = bpy.props.FloatProperty(name="Current Y", default=0.0)
+    bpy.types.Scene.bias_currents_z = bpy.props.FloatProperty(name="Current Z", default=0.0)
+
+    bpy.types.Scene.bias_stray_fields_x = bpy.props.FloatProperty(name="Stray X", default=0.0)
+    bpy.types.Scene.bias_stray_fields_y = bpy.props.FloatProperty(name="Stray Y", default=0.0)
+    bpy.types.Scene.bias_stray_fields_z = bpy.props.FloatProperty(name="Stray Z", default=0.0)
+
+
+def unregister_bias_field_props():
+    del bpy.types.Scene.bias_coil_factors_x
+    del bpy.types.Scene.bias_coil_factors_y
+    del bpy.types.Scene.bias_coil_factors_z
+    del bpy.types.Scene.bias_currents_x
+    del bpy.types.Scene.bias_currents_y
+    del bpy.types.Scene.bias_currents_z
+    del bpy.types.Scene.bias_stray_fields_x
+    del bpy.types.Scene.bias_stray_fields_y
+    del bpy.types.Scene.bias_stray_fields_z

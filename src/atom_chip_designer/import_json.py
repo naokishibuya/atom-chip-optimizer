@@ -30,7 +30,8 @@ class AtomChipImporter(Operator, ImportHelper):
         # Clear existing objects
         clear_atom_chip_objects()
 
-        for component in data:
+        wires = data["wires"]
+        for component in wires:
             component_id = component["component_id"]
             segment_id = component["segment_id"]
             start = mathutils.Vector(component["start"]) * 1e-3  # from mm to m
@@ -59,6 +60,19 @@ class AtomChipImporter(Operator, ImportHelper):
                 (length, width, height),
                 direction,
             )
+
+        if "bias_fields" in data:
+            scene = bpy.context.scene
+            bias_fields = data["bias_fields"]
+            scene.bias_coil_factors_x = bias_fields["coil_factors"][0]
+            scene.bias_coil_factors_y = bias_fields["coil_factors"][1]
+            scene.bias_coil_factors_z = bias_fields["coil_factors"][2]
+            scene.bias_currents_x = bias_fields["currents"][0]
+            scene.bias_currents_y = bias_fields["currents"][1]
+            scene.bias_currents_z = bias_fields["currents"][2]
+            scene.bias_stray_fields_x = bias_fields["stray_fields"][0]
+            scene.bias_stray_fields_y = bias_fields["stray_fields"][1]
+            scene.bias_stray_fields_z = bias_fields["stray_fields"][2]
 
         # Deselect all objects
         bpy.ops.object.select_all(action="DESELECT")

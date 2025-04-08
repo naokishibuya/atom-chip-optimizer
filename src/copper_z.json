@@ -1,236 +1,255 @@
-[
-  {
-    "component_id": 0,
-    "segment_id": 0,
-    "material": "copper",
-    "current": 85.0,
-    "start": [
-      0.0,
-      -40.2,
-      -128.208
+{
+  "wires": [
+    {
+      "component_id": 0,
+      "segment_id": 0,
+      "material": "copper",
+      "current": 85.0,
+      "start": [
+        0.0,
+        -40.2,
+        -128.208
+      ],
+      "end": [
+        0.0,
+        -40.2,
+        -35.208
+      ],
+      "width": 3.0,
+      "height": 3.0
+    },
+    {
+      "component_id": 0,
+      "segment_id": 1,
+      "material": "copper",
+      "current": 85.0,
+      "start": [
+        0.0,
+        -37.2,
+        -31.708
+      ],
+      "end": [
+        0.0,
+        -25.0,
+        -31.708
+      ],
+      "width": 5.0,
+      "height": 7.0
+    },
+    {
+      "component_id": 0,
+      "segment_id": 2,
+      "material": "copper",
+      "current": 85.0,
+      "start": [
+        0.0,
+        -22.5,
+        -28.208
+      ],
+      "end": [
+        0.0,
+        -22.5,
+        -3.208
+      ],
+      "width": 3.0,
+      "height": 3.0
+    },
+    {
+      "component_id": 0,
+      "segment_id": 3,
+      "material": "copper",
+      "current": 85.0,
+      "start": [
+        -3.25,
+        -17.75,
+        -1.958
+      ],
+      "end": [
+        -3.25,
+        -6.5,
+        -1.958
+      ],
+      "width": 1.5,
+      "height": 2.5
+    },
+    {
+      "component_id": 0,
+      "segment_id": 4,
+      "material": "copper",
+      "current": 85.0,
+      "start": [
+        -3.25,
+        -6.5,
+        -1.208
+      ],
+      "end": [
+        -3.25,
+        -0.15,
+        -1.208
+      ],
+      "width": 1.5,
+      "height": 1.0
+    },
+    {
+      "component_id": 0,
+      "segment_id": 5,
+      "material": "copper",
+      "current": 85.0,
+      "start": [
+        -3.0,
+        0.0,
+        -1.208
+      ],
+      "end": [
+        3.0,
+        0.0,
+        -1.208
+      ],
+      "width": 1.5,
+      "height": 1.0
+    },
+    {
+      "component_id": 0,
+      "segment_id": 6,
+      "material": "copper",
+      "current": 85.0,
+      "start": [
+        3.25,
+        0.15,
+        -1.208
+      ],
+      "end": [
+        3.25,
+        6.5,
+        -1.208
+      ],
+      "width": 1.5,
+      "height": 1.0
+    },
+    {
+      "component_id": 0,
+      "segment_id": 7,
+      "material": "copper",
+      "current": 85.0,
+      "start": [
+        3.25,
+        6.5,
+        -1.958
+      ],
+      "end": [
+        3.25,
+        17.75,
+        -1.958
+      ],
+      "width": 1.5,
+      "height": 2.5
+    },
+    {
+      "component_id": 0,
+      "segment_id": 8,
+      "material": "copper",
+      "current": 85.0,
+      "start": [
+        0.0,
+        22.5,
+        -3.208
+      ],
+      "end": [
+        0.0,
+        22.5,
+        -28.208
+      ],
+      "width": 3.0,
+      "height": 3.0
+    },
+    {
+      "component_id": 0,
+      "segment_id": 9,
+      "material": "copper",
+      "current": 85.0,
+      "start": [
+        0.0,
+        25.0,
+        -31.708
+      ],
+      "end": [
+        0.0,
+        37.2,
+        -31.708
+      ],
+      "width": 5.0,
+      "height": 7.0
+    },
+    {
+      "component_id": 0,
+      "segment_id": 10,
+      "material": "copper",
+      "current": 85.0,
+      "start": [
+        0.0,
+        40.2,
+        -35.208
+      ],
+      "end": [
+        0.0,
+        40.2,
+        -128.208
+      ],
+      "width": 3.0,
+      "height": 3.0
+    },
+    {
+      "component_id": 1,
+      "segment_id": 0,
+      "material": "copper",
+      "current": 0.0,
+      "start": [
+        -10.0,
+        -17.0,
+        -1.208
+      ],
+      "end": [
+        -10.0,
+        17.0,
+        -1.208
+      ],
+      "width": 2.0,
+      "height": 1.0
+    },
+    {
+      "component_id": 1,
+      "segment_id": 1,
+      "material": "copper",
+      "current": 0.0,
+      "start": [
+        10.0,
+        -17.0,
+        -1.208
+      ],
+      "end": [
+        10.0,
+        17.0,
+        -1.208
+      ],
+      "width": 2.0,
+      "height": 1.0
+    }
+  ],
+  "bias_fields": {
+    "coil_factors": [
+      -1.068,
+      1.8,
+      3.0
     ],
-    "end": [
-      0.0,
-      -40.2,
-      -35.208
+    "currents": [
+      17.4,
+      44.3,
+      0.0
     ],
-    "width": 3.0,
-    "height": 3.0
-  },
-  {
-    "component_id": 0,
-    "segment_id": 1,
-    "material": "copper",
-    "current": 85.0,
-    "start": [
-      0.0,
-      -37.2,
-      -31.708
-    ],
-    "end": [
-      0.0,
-      -25.0,
-      -31.708
-    ],
-    "width": 5.0,
-    "height": 7.0
-  },
-  {
-    "component_id": 0,
-    "segment_id": 2,
-    "material": "copper",
-    "current": 85.0,
-    "start": [
-      0.0,
-      -22.5,
-      -28.208
-    ],
-    "end": [
-      0.0,
-      -22.5,
-      -3.208
-    ],
-    "width": 3.0,
-    "height": 3.0
-  },
-  {
-    "component_id": 0,
-    "segment_id": 3,
-    "material": "copper",
-    "current": 85.0,
-    "start": [
-      -3.25,
-      -17.75,
-      -1.958
-    ],
-    "end": [
-      -3.25,
-      -6.5,
-      -1.958
-    ],
-    "width": 1.5,
-    "height": 2.5
-  },
-  {
-    "component_id": 0,
-    "segment_id": 4,
-    "material": "copper",
-    "current": 85.0,
-    "start": [
-      -3.25,
-      -6.5,
-      -1.208
-    ],
-    "end": [
-      -3.25,
-      -0.15,
-      -1.208
-    ],
-    "width": 1.5,
-    "height": 1.0
-  },
-  {
-    "component_id": 0,
-    "segment_id": 5,
-    "material": "copper",
-    "current": 85.0,
-    "start": [
-      -3.0,
-      0.0,
-      -1.208
-    ],
-    "end": [
-      3.0,
-      0.0,
-      -1.208
-    ],
-    "width": 1.5,
-    "height": 1.0
-  },
-  {
-    "component_id": 0,
-    "segment_id": 6,
-    "material": "copper",
-    "current": 85.0,
-    "start": [
-      3.25,
-      0.15,
-      -1.208
-    ],
-    "end": [
-      3.25,
-      6.5,
-      -1.208
-    ],
-    "width": 1.5,
-    "height": 1.0
-  },
-  {
-    "component_id": 0,
-    "segment_id": 7,
-    "material": "copper",
-    "current": 85.0,
-    "start": [
-      3.25,
-      6.5,
-      -1.958
-    ],
-    "end": [
-      3.25,
-      17.75,
-      -1.958
-    ],
-    "width": 1.5,
-    "height": 2.5
-  },
-  {
-    "component_id": 0,
-    "segment_id": 8,
-    "material": "copper",
-    "current": 85.0,
-    "start": [
-      0.0,
-      22.5,
-      -3.208
-    ],
-    "end": [
-      0.0,
-      22.5,
-      -28.208
-    ],
-    "width": 3.0,
-    "height": 3.0
-  },
-  {
-    "component_id": 0,
-    "segment_id": 9,
-    "material": "copper",
-    "current": 85.0,
-    "start": [
-      0.0,
-      25.0,
-      -31.708
-    ],
-    "end": [
-      0.0,
-      37.2,
-      -31.708
-    ],
-    "width": 5.0,
-    "height": 7.0
-  },
-  {
-    "component_id": 0,
-    "segment_id": 10,
-    "material": "copper",
-    "current": 85.0,
-    "start": [
-      0.0,
-      40.2,
-      -35.208
-    ],
-    "end": [
-      0.0,
-      40.2,
-      -128.208
-    ],
-    "width": 3.0,
-    "height": 3.0
-  },
-  {
-    "component_id": 1,
-    "segment_id": 0,
-    "material": "copper",
-    "current": 0.0,
-    "start": [
-      -10.0,
-      -17.0,
-      -1.208
-    ],
-    "end": [
-      -10.0,
-      17.0,
-      -1.208
-    ],
-    "width": 2.0,
-    "height": 1.0
-  },
-  {
-    "component_id": 1,
-    "segment_id": 1,
-    "material": "copper",
-    "current": 0.0,
-    "start": [
-      10.0,
-      -17.0,
-      -1.208
-    ],
-    "end": [
-      10.0,
-      17.0,
-      -1.208
-    ],
-    "width": 2.0,
-    "height": 1.0
+    "stray_fields": [
+      3.5,
+      -0.1,
+      0.0
+    ]
   }
-]
+}

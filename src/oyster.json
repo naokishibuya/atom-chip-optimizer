@@ -1,1316 +1,1335 @@
-[
-  {
-    "component_id": 0,
-    "segment_id": 0,
-    "material": "gold",
-    "current": 0.53,
-    "start": [
-      -5.6,
-      -9.2,
-      -0.035
+{
+  "wires": [
+    {
+      "component_id": 0,
+      "segment_id": 0,
+      "material": "gold",
+      "current": 0.53,
+      "start": [
+        -5.6,
+        -9.2,
+        -0.035
+      ],
+      "end": [
+        -5.6,
+        6.8,
+        -0.035
+      ],
+      "width": 0.3,
+      "height": 0.07
+    },
+    {
+      "component_id": 1,
+      "segment_id": 0,
+      "material": "gold",
+      "current": 0.89,
+      "start": [
+        -5.2,
+        -8.7,
+        -0.035
+      ],
+      "end": [
+        -5.2,
+        7.3,
+        -0.035
+      ],
+      "width": 0.3,
+      "height": 0.07
+    },
+    {
+      "component_id": 2,
+      "segment_id": 0,
+      "material": "gold",
+      "current": -0.97,
+      "start": [
+        -4.8,
+        -8.2,
+        -0.035
+      ],
+      "end": [
+        -4.8,
+        7.8,
+        -0.035
+      ],
+      "width": 0.3,
+      "height": 0.07
+    },
+    {
+      "component_id": 3,
+      "segment_id": 0,
+      "material": "gold",
+      "current": 0.89,
+      "start": [
+        -4.4,
+        -7.7,
+        -0.035
+      ],
+      "end": [
+        -4.4,
+        8.3,
+        -0.035
+      ],
+      "width": 0.3,
+      "height": 0.07
+    },
+    {
+      "component_id": 4,
+      "segment_id": 0,
+      "material": "gold",
+      "current": 0.53,
+      "start": [
+        -4.0,
+        -7.2,
+        -0.035
+      ],
+      "end": [
+        -4.0,
+        8.8,
+        -0.035
+      ],
+      "width": 0.3,
+      "height": 0.07
+    },
+    {
+      "component_id": 5,
+      "segment_id": 0,
+      "material": "gold",
+      "current": 0.0,
+      "start": [
+        -3.6,
+        -6.7,
+        -0.035
+      ],
+      "end": [
+        -3.6,
+        9.3,
+        -0.035
+      ],
+      "width": 0.3,
+      "height": 0.07
+    },
+    {
+      "component_id": 6,
+      "segment_id": 0,
+      "material": "gold",
+      "current": -0.53,
+      "start": [
+        -3.2,
+        -9.2,
+        -0.035
+      ],
+      "end": [
+        -3.2,
+        6.8,
+        -0.035
+      ],
+      "width": 0.3,
+      "height": 0.07
+    },
+    {
+      "component_id": 7,
+      "segment_id": 0,
+      "material": "gold",
+      "current": -0.89,
+      "start": [
+        -2.8,
+        -8.7,
+        -0.035
+      ],
+      "end": [
+        -2.8,
+        7.3,
+        -0.035
+      ],
+      "width": 0.3,
+      "height": 0.07
+    },
+    {
+      "component_id": 8,
+      "segment_id": 0,
+      "material": "gold",
+      "current": 0.97,
+      "start": [
+        -2.4,
+        -8.2,
+        -0.035
+      ],
+      "end": [
+        -2.4,
+        7.8,
+        -0.035
+      ],
+      "width": 0.3,
+      "height": 0.07
+    },
+    {
+      "component_id": 9,
+      "segment_id": 0,
+      "material": "gold",
+      "current": -0.89,
+      "start": [
+        -2.0,
+        -7.7,
+        -0.035
+      ],
+      "end": [
+        -2.0,
+        8.3,
+        -0.035
+      ],
+      "width": 0.3,
+      "height": 0.07
+    },
+    {
+      "component_id": 10,
+      "segment_id": 0,
+      "material": "gold",
+      "current": -0.53,
+      "start": [
+        -1.6,
+        -7.2,
+        -0.035
+      ],
+      "end": [
+        -1.6,
+        8.8,
+        -0.035
+      ],
+      "width": 0.3,
+      "height": 0.07
+    },
+    {
+      "component_id": 11,
+      "segment_id": 0,
+      "material": "gold",
+      "current": 0.0,
+      "start": [
+        -1.2,
+        -6.7,
+        -0.035
+      ],
+      "end": [
+        -1.2,
+        9.3,
+        -0.035
+      ],
+      "width": 0.3,
+      "height": 0.07
+    },
+    {
+      "component_id": 12,
+      "segment_id": 0,
+      "material": "gold",
+      "current": 0.53,
+      "start": [
+        -0.8,
+        -9.2,
+        -0.035
+      ],
+      "end": [
+        -0.8,
+        6.8,
+        -0.035
+      ],
+      "width": 0.3,
+      "height": 0.07
+    },
+    {
+      "component_id": 13,
+      "segment_id": 0,
+      "material": "gold",
+      "current": 0.89,
+      "start": [
+        -0.4,
+        -8.7,
+        -0.035
+      ],
+      "end": [
+        -0.4,
+        7.3,
+        -0.035
+      ],
+      "width": 0.3,
+      "height": 0.07
+    },
+    {
+      "component_id": 14,
+      "segment_id": 0,
+      "material": "gold",
+      "current": -0.97,
+      "start": [
+        0.0,
+        -8.2,
+        -0.035
+      ],
+      "end": [
+        0.0,
+        7.8,
+        -0.035
+      ],
+      "width": 0.3,
+      "height": 0.07
+    },
+    {
+      "component_id": 15,
+      "segment_id": 0,
+      "material": "gold",
+      "current": 0.89,
+      "start": [
+        0.4,
+        -7.7,
+        -0.035
+      ],
+      "end": [
+        0.4,
+        8.3,
+        -0.035
+      ],
+      "width": 0.3,
+      "height": 0.07
+    },
+    {
+      "component_id": 16,
+      "segment_id": 0,
+      "material": "gold",
+      "current": 0.53,
+      "start": [
+        0.8,
+        -7.2,
+        -0.035
+      ],
+      "end": [
+        0.8,
+        8.8,
+        -0.035
+      ],
+      "width": 0.3,
+      "height": 0.07
+    },
+    {
+      "component_id": 17,
+      "segment_id": 0,
+      "material": "gold",
+      "current": 0.0,
+      "start": [
+        1.2,
+        -6.7,
+        -0.035
+      ],
+      "end": [
+        1.2,
+        9.3,
+        -0.035
+      ],
+      "width": 0.3,
+      "height": 0.07
+    },
+    {
+      "component_id": 18,
+      "segment_id": 0,
+      "material": "gold",
+      "current": -0.53,
+      "start": [
+        1.6,
+        -9.2,
+        -0.035
+      ],
+      "end": [
+        1.6,
+        6.8,
+        -0.035
+      ],
+      "width": 0.3,
+      "height": 0.07
+    },
+    {
+      "component_id": 19,
+      "segment_id": 0,
+      "material": "gold",
+      "current": -0.89,
+      "start": [
+        2.0,
+        -8.7,
+        -0.035
+      ],
+      "end": [
+        2.0,
+        7.3,
+        -0.035
+      ],
+      "width": 0.3,
+      "height": 0.07
+    },
+    {
+      "component_id": 20,
+      "segment_id": 0,
+      "material": "gold",
+      "current": 0.97,
+      "start": [
+        2.4,
+        -8.2,
+        -0.035
+      ],
+      "end": [
+        2.4,
+        7.8,
+        -0.035
+      ],
+      "width": 0.3,
+      "height": 0.07
+    },
+    {
+      "component_id": 21,
+      "segment_id": 0,
+      "material": "gold",
+      "current": -0.89,
+      "start": [
+        2.8,
+        -7.7,
+        -0.035
+      ],
+      "end": [
+        2.8,
+        8.3,
+        -0.035
+      ],
+      "width": 0.3,
+      "height": 0.07
+    },
+    {
+      "component_id": 22,
+      "segment_id": 0,
+      "material": "gold",
+      "current": -0.53,
+      "start": [
+        3.2,
+        -7.2,
+        -0.035
+      ],
+      "end": [
+        3.2,
+        8.8,
+        -0.035
+      ],
+      "width": 0.3,
+      "height": 0.07
+    },
+    {
+      "component_id": 23,
+      "segment_id": 0,
+      "material": "gold",
+      "current": 0.0,
+      "start": [
+        3.6,
+        -6.7,
+        -0.035
+      ],
+      "end": [
+        3.6,
+        9.3,
+        -0.035
+      ],
+      "width": 0.3,
+      "height": 0.07
+    },
+    {
+      "component_id": 24,
+      "segment_id": 0,
+      "material": "gold",
+      "current": 0.53,
+      "start": [
+        4.0,
+        -9.2,
+        -0.035
+      ],
+      "end": [
+        4.0,
+        6.8,
+        -0.035
+      ],
+      "width": 0.3,
+      "height": 0.07
+    },
+    {
+      "component_id": 25,
+      "segment_id": 0,
+      "material": "gold",
+      "current": 0.89,
+      "start": [
+        4.4,
+        -8.7,
+        -0.035
+      ],
+      "end": [
+        4.4,
+        7.3,
+        -0.035
+      ],
+      "width": 0.3,
+      "height": 0.07
+    },
+    {
+      "component_id": 26,
+      "segment_id": 0,
+      "material": "gold",
+      "current": -0.97,
+      "start": [
+        4.8,
+        -8.2,
+        -0.035
+      ],
+      "end": [
+        4.8,
+        7.8,
+        -0.035
+      ],
+      "width": 0.3,
+      "height": 0.07
+    },
+    {
+      "component_id": 27,
+      "segment_id": 0,
+      "material": "gold",
+      "current": 0.89,
+      "start": [
+        5.2,
+        -7.7,
+        -0.035
+      ],
+      "end": [
+        5.2,
+        8.3,
+        -0.035
+      ],
+      "width": 0.3,
+      "height": 0.07
+    },
+    {
+      "component_id": 28,
+      "segment_id": 0,
+      "material": "gold",
+      "current": 0.53,
+      "start": [
+        5.6,
+        -7.2,
+        -0.035
+      ],
+      "end": [
+        5.6,
+        8.8,
+        -0.035
+      ],
+      "width": 0.3,
+      "height": 0.07
+    },
+    {
+      "component_id": 29,
+      "segment_id": 0,
+      "material": "gold",
+      "current": 0.0,
+      "start": [
+        6.0,
+        -6.7,
+        -0.035
+      ],
+      "end": [
+        6.0,
+        9.3,
+        -0.035
+      ],
+      "width": 0.3,
+      "height": 0.07
+    },
+    {
+      "component_id": 30,
+      "segment_id": 0,
+      "material": "copper",
+      "current": 0.0,
+      "start": [
+        -31.0,
+        4.9,
+        -0.485
+      ],
+      "end": [
+        31.0,
+        4.9,
+        -0.485
+      ],
+      "width": 1.5,
+      "height": 0.07
+    },
+    {
+      "component_id": 31,
+      "segment_id": 0,
+      "material": "copper",
+      "current": 13.8,
+      "start": [
+        -40.2,
+        14.0,
+        -50.485
+      ],
+      "end": [
+        -40.2,
+        14.0,
+        -0.485
+      ],
+      "width": 1.0,
+      "height": 0.07
+    },
+    {
+      "component_id": 31,
+      "segment_id": 1,
+      "material": "copper",
+      "current": 13.8,
+      "start": [
+        -41.43,
+        14.03,
+        -0.485
+      ],
+      "end": [
+        -34.83,
+        7.43,
+        -0.485
+      ],
+      "width": 2.0,
+      "height": 0.07
+    },
+    {
+      "component_id": 31,
+      "segment_id": 2,
+      "material": "copper",
+      "current": 13.8,
+      "start": [
+        -34.83,
+        7.43,
+        -0.485
+      ],
+      "end": [
+        -34.83,
+        4.83,
+        -0.485
+      ],
+      "width": 2.0,
+      "height": 0.07
+    },
+    {
+      "component_id": 31,
+      "segment_id": 3,
+      "material": "copper",
+      "current": 13.8,
+      "start": [
+        -34.83,
+        4.83,
+        -0.485
+      ],
+      "end": [
+        -33.03,
+        3.05,
+        -0.485
+      ],
+      "width": 2.0,
+      "height": 0.07
+    },
+    {
+      "component_id": 31,
+      "segment_id": 4,
+      "material": "copper",
+      "current": 13.8,
+      "start": [
+        -33.03,
+        3.05,
+        -0.485
+      ],
+      "end": [
+        33.03,
+        3.05,
+        -0.485
+      ],
+      "width": 2.0,
+      "height": 0.07
+    },
+    {
+      "component_id": 31,
+      "segment_id": 5,
+      "material": "copper",
+      "current": 13.8,
+      "start": [
+        33.03,
+        3.05,
+        -0.485
+      ],
+      "end": [
+        34.83,
+        4.83,
+        -0.485
+      ],
+      "width": 2.0,
+      "height": 0.07
+    },
+    {
+      "component_id": 31,
+      "segment_id": 6,
+      "material": "copper",
+      "current": 13.8,
+      "start": [
+        34.83,
+        4.83,
+        -0.485
+      ],
+      "end": [
+        34.83,
+        7.43,
+        -0.485
+      ],
+      "width": 2.0,
+      "height": 0.07
+    },
+    {
+      "component_id": 31,
+      "segment_id": 7,
+      "material": "copper",
+      "current": 13.8,
+      "start": [
+        34.83,
+        7.43,
+        -0.485
+      ],
+      "end": [
+        41.43,
+        14.03,
+        -0.485
+      ],
+      "width": 2.0,
+      "height": 0.07
+    },
+    {
+      "component_id": 31,
+      "segment_id": 8,
+      "material": "copper",
+      "current": 13.8,
+      "start": [
+        40.2,
+        14.0,
+        -0.485
+      ],
+      "end": [
+        40.2,
+        14.0,
+        -50.485
+      ],
+      "width": 1.0,
+      "height": 0.07
+    },
+    {
+      "component_id": 32,
+      "segment_id": 0,
+      "material": "copper",
+      "current": 13.8,
+      "start": [
+        -40.2,
+        8.47,
+        -50.485
+      ],
+      "end": [
+        -40.2,
+        8.47,
+        -0.485
+      ],
+      "width": 1.0,
+      "height": 0.07
+    },
+    {
+      "component_id": 32,
+      "segment_id": 1,
+      "material": "copper",
+      "current": 13.8,
+      "start": [
+        -40.6,
+        8.1,
+        -0.485
+      ],
+      "end": [
+        -34.2,
+        1.45,
+        -0.485
+      ],
+      "width": 1.0,
+      "height": 0.07
+    },
+    {
+      "component_id": 32,
+      "segment_id": 2,
+      "material": "copper",
+      "current": 13.8,
+      "start": [
+        -34.2,
+        1.45,
+        -0.485
+      ],
+      "end": [
+        34.2,
+        1.45,
+        -0.485
+      ],
+      "width": 1.0,
+      "height": 0.07
+    },
+    {
+      "component_id": 32,
+      "segment_id": 3,
+      "material": "copper",
+      "current": 13.8,
+      "start": [
+        34.2,
+        1.45,
+        -0.485
+      ],
+      "end": [
+        40.6,
+        8.1,
+        -0.485
+      ],
+      "width": 1.0,
+      "height": 0.07
+    },
+    {
+      "component_id": 32,
+      "segment_id": 4,
+      "material": "copper",
+      "current": 13.8,
+      "start": [
+        40.2,
+        8.47,
+        -0.485
+      ],
+      "end": [
+        40.2,
+        8.47,
+        -50.485
+      ],
+      "width": 1.0,
+      "height": 0.07
+    },
+    {
+      "component_id": 33,
+      "segment_id": 0,
+      "material": "copper",
+      "current": -3.7,
+      "start": [
+        -40.2,
+        3.7,
+        -50.485
+      ],
+      "end": [
+        -40.2,
+        3.7,
+        -0.485
+      ],
+      "width": 1.0,
+      "height": 0.07
+    },
+    {
+      "component_id": 33,
+      "segment_id": 1,
+      "material": "copper",
+      "current": -3.7,
+      "start": [
+        -39.875,
+        2.4,
+        -0.485
+      ],
+      "end": [
+        -34.875,
+        0.6,
+        -0.485
+      ],
+      "width": 0.5,
+      "height": 0.07
+    },
+    {
+      "component_id": 33,
+      "segment_id": 2,
+      "material": "copper",
+      "current": -3.7,
+      "start": [
+        -34.875,
+        0.6,
+        -0.485
+      ],
+      "end": [
+        34.875,
+        0.6,
+        -0.485
+      ],
+      "width": 0.5,
+      "height": 0.07
+    },
+    {
+      "component_id": 33,
+      "segment_id": 3,
+      "material": "copper",
+      "current": -3.7,
+      "start": [
+        34.875,
+        0.6,
+        -0.485
+      ],
+      "end": [
+        39.875,
+        2.4,
+        -0.485
+      ],
+      "width": 0.5,
+      "height": 0.07
+    },
+    {
+      "component_id": 33,
+      "segment_id": 4,
+      "material": "copper",
+      "current": -3.7,
+      "start": [
+        40.2,
+        3.7,
+        -0.485
+      ],
+      "end": [
+        40.2,
+        3.7,
+        -50.485
+      ],
+      "width": 1.0,
+      "height": 0.07
+    },
+    {
+      "component_id": 34,
+      "segment_id": 0,
+      "material": "copper",
+      "current": -3.7,
+      "start": [
+        -40.2,
+        0.0,
+        -50.485
+      ],
+      "end": [
+        -40.2,
+        0.0,
+        -0.485
+      ],
+      "width": 1.0,
+      "height": 0.07
+    },
+    {
+      "component_id": 34,
+      "segment_id": 1,
+      "material": "copper",
+      "current": -3.7,
+      "start": [
+        -38.9,
+        0.0,
+        -0.485
+      ],
+      "end": [
+        38.9,
+        0.0,
+        -0.485
+      ],
+      "width": 0.5,
+      "height": 0.07
+    },
+    {
+      "component_id": 34,
+      "segment_id": 2,
+      "material": "copper",
+      "current": -3.7,
+      "start": [
+        40.2,
+        0.0,
+        -0.485
+      ],
+      "end": [
+        40.2,
+        0.0,
+        -50.485
+      ],
+      "width": 1.0,
+      "height": 0.07
+    },
+    {
+      "component_id": 35,
+      "segment_id": 0,
+      "material": "copper",
+      "current": -3.7,
+      "start": [
+        -40.2,
+        -3.7,
+        -50.485
+      ],
+      "end": [
+        -40.2,
+        -3.7,
+        -0.485
+      ],
+      "width": 1.0,
+      "height": 0.07
+    },
+    {
+      "component_id": 35,
+      "segment_id": 1,
+      "material": "copper",
+      "current": -3.7,
+      "start": [
+        -39.875,
+        -2.4,
+        -0.485
+      ],
+      "end": [
+        -34.875,
+        -0.6,
+        -0.485
+      ],
+      "width": 0.5,
+      "height": 0.07
+    },
+    {
+      "component_id": 35,
+      "segment_id": 2,
+      "material": "copper",
+      "current": -3.7,
+      "start": [
+        -34.875,
+        -0.6,
+        -0.485
+      ],
+      "end": [
+        34.875,
+        -0.6,
+        -0.485
+      ],
+      "width": 0.5,
+      "height": 0.07
+    },
+    {
+      "component_id": 35,
+      "segment_id": 3,
+      "material": "copper",
+      "current": -3.7,
+      "start": [
+        34.875,
+        -0.6,
+        -0.485
+      ],
+      "end": [
+        39.875,
+        -2.4,
+        -0.485
+      ],
+      "width": 0.5,
+      "height": 0.07
+    },
+    {
+      "component_id": 35,
+      "segment_id": 4,
+      "material": "copper",
+      "current": -3.7,
+      "start": [
+        40.2,
+        -3.7,
+        -0.485
+      ],
+      "end": [
+        40.2,
+        -3.7,
+        -50.485
+      ],
+      "width": 1.0,
+      "height": 0.07
+    },
+    {
+      "component_id": 36,
+      "segment_id": 0,
+      "material": "copper",
+      "current": 13.8,
+      "start": [
+        -40.2,
+        -8.47,
+        -50.485
+      ],
+      "end": [
+        -40.2,
+        -8.47,
+        -0.485
+      ],
+      "width": 1.0,
+      "height": 0.07
+    },
+    {
+      "component_id": 36,
+      "segment_id": 1,
+      "material": "copper",
+      "current": 13.8,
+      "start": [
+        -40.6,
+        -8.1,
+        -0.485
+      ],
+      "end": [
+        -34.2,
+        -1.45,
+        -0.485
+      ],
+      "width": 1.0,
+      "height": 0.07
+    },
+    {
+      "component_id": 36,
+      "segment_id": 2,
+      "material": "copper",
+      "current": 13.8,
+      "start": [
+        -34.2,
+        -1.45,
+        -0.485
+      ],
+      "end": [
+        34.2,
+        -1.45,
+        -0.485
+      ],
+      "width": 1.0,
+      "height": 0.07
+    },
+    {
+      "component_id": 36,
+      "segment_id": 3,
+      "material": "copper",
+      "current": 13.8,
+      "start": [
+        34.2,
+        -1.45,
+        -0.485
+      ],
+      "end": [
+        40.6,
+        -8.1,
+        -0.485
+      ],
+      "width": 1.0,
+      "height": 0.07
+    },
+    {
+      "component_id": 36,
+      "segment_id": 4,
+      "material": "copper",
+      "current": 13.8,
+      "start": [
+        40.2,
+        -8.47,
+        -0.485
+      ],
+      "end": [
+        40.2,
+        -8.47,
+        -50.485
+      ],
+      "width": 1.0,
+      "height": 0.07
+    },
+    {
+      "component_id": 37,
+      "segment_id": 0,
+      "material": "copper",
+      "current": 13.8,
+      "start": [
+        -40.2,
+        -14.0,
+        -50.485
+      ],
+      "end": [
+        -40.2,
+        -14.0,
+        -0.485
+      ],
+      "width": 1.0,
+      "height": 0.07
+    },
+    {
+      "component_id": 37,
+      "segment_id": 1,
+      "material": "copper",
+      "current": 13.8,
+      "start": [
+        -41.43,
+        -14.03,
+        -0.485
+      ],
+      "end": [
+        -34.83,
+        -7.43,
+        -0.485
+      ],
+      "width": 2.0,
+      "height": 0.07
+    },
+    {
+      "component_id": 37,
+      "segment_id": 2,
+      "material": "copper",
+      "current": 13.8,
+      "start": [
+        -34.83,
+        -7.43,
+        -0.485
+      ],
+      "end": [
+        -34.83,
+        -4.83,
+        -0.485
+      ],
+      "width": 2.0,
+      "height": 0.07
+    },
+    {
+      "component_id": 37,
+      "segment_id": 3,
+      "material": "copper",
+      "current": 13.8,
+      "start": [
+        -34.83,
+        -4.83,
+        -0.485
+      ],
+      "end": [
+        -33.03,
+        -3.05,
+        -0.485
+      ],
+      "width": 2.0,
+      "height": 0.07
+    },
+    {
+      "component_id": 37,
+      "segment_id": 4,
+      "material": "copper",
+      "current": 13.8,
+      "start": [
+        -33.03,
+        -3.05,
+        -0.485
+      ],
+      "end": [
+        33.03,
+        -3.05,
+        -0.485
+      ],
+      "width": 2.0,
+      "height": 0.07
+    },
+    {
+      "component_id": 37,
+      "segment_id": 5,
+      "material": "copper",
+      "current": 13.8,
+      "start": [
+        33.03,
+        -3.05,
+        -0.485
+      ],
+      "end": [
+        34.83,
+        -4.83,
+        -0.485
+      ],
+      "width": 2.0,
+      "height": 0.07
+    },
+    {
+      "component_id": 37,
+      "segment_id": 6,
+      "material": "copper",
+      "current": 13.8,
+      "start": [
+        34.83,
+        -4.83,
+        -0.485
+      ],
+      "end": [
+        34.83,
+        -7.43,
+        -0.485
+      ],
+      "width": 2.0,
+      "height": 0.07
+    },
+    {
+      "component_id": 37,
+      "segment_id": 7,
+      "material": "copper",
+      "current": 13.8,
+      "start": [
+        34.83,
+        -7.43,
+        -0.485
+      ],
+      "end": [
+        41.43,
+        -14.03,
+        -0.485
+      ],
+      "width": 2.0,
+      "height": 0.07
+    },
+    {
+      "component_id": 37,
+      "segment_id": 8,
+      "material": "copper",
+      "current": 13.8,
+      "start": [
+        40.2,
+        -14.0,
+        -0.485
+      ],
+      "end": [
+        40.2,
+        -14.0,
+        -50.485
+      ],
+      "width": 1.0,
+      "height": 0.07
+    },
+    {
+      "component_id": 38,
+      "segment_id": 0,
+      "material": "copper",
+      "current": 0.0,
+      "start": [
+        -31.0,
+        -4.9,
+        -0.485
+      ],
+      "end": [
+        31.0,
+        -4.9,
+        -0.485
+      ],
+      "width": 1.5,
+      "height": 0.07
+    }
+  ],
+  "bias_fields": {
+    "coil_factors": [
+      -1.068,
+      1.8,
+      3.0
     ],
-    "end": [
-      -5.6,
-      6.8,
-      -0.035
-    ],
-    "width": 0.3,
-    "height": 0.07
-  },
-  {
-    "component_id": 1,
-    "segment_id": 0,
-    "material": "gold",
-    "current": 0.89,
-    "start": [
-      -5.2,
-      -8.7,
-      -0.035
-    ],
-    "end": [
-      -5.2,
-      7.3,
-      -0.035
-    ],
-    "width": 0.3,
-    "height": 0.07
-  },
-  {
-    "component_id": 2,
-    "segment_id": 0,
-    "material": "gold",
-    "current": -0.97,
-    "start": [
-      -4.8,
-      -8.2,
-      -0.035
-    ],
-    "end": [
-      -4.8,
-      7.8,
-      -0.035
-    ],
-    "width": 0.3,
-    "height": 0.07
-  },
-  {
-    "component_id": 3,
-    "segment_id": 0,
-    "material": "gold",
-    "current": 0.89,
-    "start": [
-      -4.4,
-      -7.7,
-      -0.035
-    ],
-    "end": [
-      -4.4,
-      8.3,
-      -0.035
-    ],
-    "width": 0.3,
-    "height": 0.07
-  },
-  {
-    "component_id": 4,
-    "segment_id": 0,
-    "material": "gold",
-    "current": 0.53,
-    "start": [
-      -4.0,
-      -7.2,
-      -0.035
-    ],
-    "end": [
-      -4.0,
-      8.8,
-      -0.035
-    ],
-    "width": 0.3,
-    "height": 0.07
-  },
-  {
-    "component_id": 5,
-    "segment_id": 0,
-    "material": "gold",
-    "current": 0.0,
-    "start": [
-      -3.6,
-      -6.7,
-      -0.035
-    ],
-    "end": [
-      -3.6,
-      9.3,
-      -0.035
-    ],
-    "width": 0.3,
-    "height": 0.07
-  },
-  {
-    "component_id": 6,
-    "segment_id": 0,
-    "material": "gold",
-    "current": -0.53,
-    "start": [
-      -3.2,
-      -9.2,
-      -0.035
-    ],
-    "end": [
-      -3.2,
-      6.8,
-      -0.035
-    ],
-    "width": 0.3,
-    "height": 0.07
-  },
-  {
-    "component_id": 7,
-    "segment_id": 0,
-    "material": "gold",
-    "current": -0.89,
-    "start": [
-      -2.8,
-      -8.7,
-      -0.035
-    ],
-    "end": [
-      -2.8,
-      7.3,
-      -0.035
-    ],
-    "width": 0.3,
-    "height": 0.07
-  },
-  {
-    "component_id": 8,
-    "segment_id": 0,
-    "material": "gold",
-    "current": 0.97,
-    "start": [
-      -2.4,
-      -8.2,
-      -0.035
-    ],
-    "end": [
-      -2.4,
-      7.8,
-      -0.035
-    ],
-    "width": 0.3,
-    "height": 0.07
-  },
-  {
-    "component_id": 9,
-    "segment_id": 0,
-    "material": "gold",
-    "current": -0.89,
-    "start": [
-      -2.0,
-      -7.7,
-      -0.035
-    ],
-    "end": [
-      -2.0,
-      8.3,
-      -0.035
-    ],
-    "width": 0.3,
-    "height": 0.07
-  },
-  {
-    "component_id": 10,
-    "segment_id": 0,
-    "material": "gold",
-    "current": -0.53,
-    "start": [
-      -1.6,
-      -7.2,
-      -0.035
-    ],
-    "end": [
-      -1.6,
-      8.8,
-      -0.035
-    ],
-    "width": 0.3,
-    "height": 0.07
-  },
-  {
-    "component_id": 11,
-    "segment_id": 0,
-    "material": "gold",
-    "current": 0.0,
-    "start": [
-      -1.2,
-      -6.7,
-      -0.035
-    ],
-    "end": [
-      -1.2,
-      9.3,
-      -0.035
-    ],
-    "width": 0.3,
-    "height": 0.07
-  },
-  {
-    "component_id": 12,
-    "segment_id": 0,
-    "material": "gold",
-    "current": 0.53,
-    "start": [
-      -0.8,
-      -9.2,
-      -0.035
-    ],
-    "end": [
-      -0.8,
-      6.8,
-      -0.035
-    ],
-    "width": 0.3,
-    "height": 0.07
-  },
-  {
-    "component_id": 13,
-    "segment_id": 0,
-    "material": "gold",
-    "current": 0.89,
-    "start": [
-      -0.4,
-      -8.7,
-      -0.035
-    ],
-    "end": [
-      -0.4,
-      7.3,
-      -0.035
-    ],
-    "width": 0.3,
-    "height": 0.07
-  },
-  {
-    "component_id": 14,
-    "segment_id": 0,
-    "material": "gold",
-    "current": -0.97,
-    "start": [
+    "currents": [
       0.0,
-      -8.2,
-      -0.035
-    ],
-    "end": [
       0.0,
-      7.8,
-      -0.035
-    ],
-    "width": 0.3,
-    "height": 0.07
-  },
-  {
-    "component_id": 15,
-    "segment_id": 0,
-    "material": "gold",
-    "current": 0.89,
-    "start": [
-      0.4,
-      -7.7,
-      -0.035
-    ],
-    "end": [
-      0.4,
-      8.3,
-      -0.035
-    ],
-    "width": 0.3,
-    "height": 0.07
-  },
-  {
-    "component_id": 16,
-    "segment_id": 0,
-    "material": "gold",
-    "current": 0.53,
-    "start": [
-      0.8,
-      -7.2,
-      -0.035
-    ],
-    "end": [
-      0.8,
-      8.8,
-      -0.035
-    ],
-    "width": 0.3,
-    "height": 0.07
-  },
-  {
-    "component_id": 17,
-    "segment_id": 0,
-    "material": "gold",
-    "current": 0.0,
-    "start": [
-      1.2,
-      -6.7,
-      -0.035
-    ],
-    "end": [
-      1.2,
-      9.3,
-      -0.035
-    ],
-    "width": 0.3,
-    "height": 0.07
-  },
-  {
-    "component_id": 18,
-    "segment_id": 0,
-    "material": "gold",
-    "current": -0.53,
-    "start": [
-      1.6,
-      -9.2,
-      -0.035
-    ],
-    "end": [
-      1.6,
-      6.8,
-      -0.035
-    ],
-    "width": 0.3,
-    "height": 0.07
-  },
-  {
-    "component_id": 19,
-    "segment_id": 0,
-    "material": "gold",
-    "current": -0.89,
-    "start": [
-      2.0,
-      -8.7,
-      -0.035
-    ],
-    "end": [
-      2.0,
-      7.3,
-      -0.035
-    ],
-    "width": 0.3,
-    "height": 0.07
-  },
-  {
-    "component_id": 20,
-    "segment_id": 0,
-    "material": "gold",
-    "current": 0.97,
-    "start": [
-      2.4,
-      -8.2,
-      -0.035
-    ],
-    "end": [
-      2.4,
-      7.8,
-      -0.035
-    ],
-    "width": 0.3,
-    "height": 0.07
-  },
-  {
-    "component_id": 21,
-    "segment_id": 0,
-    "material": "gold",
-    "current": -0.89,
-    "start": [
-      2.8,
-      -7.7,
-      -0.035
-    ],
-    "end": [
-      2.8,
-      8.3,
-      -0.035
-    ],
-    "width": 0.3,
-    "height": 0.07
-  },
-  {
-    "component_id": 22,
-    "segment_id": 0,
-    "material": "gold",
-    "current": -0.53,
-    "start": [
-      3.2,
-      -7.2,
-      -0.035
-    ],
-    "end": [
-      3.2,
-      8.8,
-      -0.035
-    ],
-    "width": 0.3,
-    "height": 0.07
-  },
-  {
-    "component_id": 23,
-    "segment_id": 0,
-    "material": "gold",
-    "current": 0.0,
-    "start": [
-      3.6,
-      -6.7,
-      -0.035
-    ],
-    "end": [
-      3.6,
-      9.3,
-      -0.035
-    ],
-    "width": 0.3,
-    "height": 0.07
-  },
-  {
-    "component_id": 24,
-    "segment_id": 0,
-    "material": "gold",
-    "current": 0.53,
-    "start": [
-      4.0,
-      -9.2,
-      -0.035
-    ],
-    "end": [
-      4.0,
-      6.8,
-      -0.035
-    ],
-    "width": 0.3,
-    "height": 0.07
-  },
-  {
-    "component_id": 25,
-    "segment_id": 0,
-    "material": "gold",
-    "current": 0.89,
-    "start": [
-      4.4,
-      -8.7,
-      -0.035
-    ],
-    "end": [
-      4.4,
-      7.3,
-      -0.035
-    ],
-    "width": 0.3,
-    "height": 0.07
-  },
-  {
-    "component_id": 26,
-    "segment_id": 0,
-    "material": "gold",
-    "current": -0.97,
-    "start": [
-      4.8,
-      -8.2,
-      -0.035
-    ],
-    "end": [
-      4.8,
-      7.8,
-      -0.035
-    ],
-    "width": 0.3,
-    "height": 0.07
-  },
-  {
-    "component_id": 27,
-    "segment_id": 0,
-    "material": "gold",
-    "current": 0.89,
-    "start": [
-      5.2,
-      -7.7,
-      -0.035
-    ],
-    "end": [
-      5.2,
-      8.3,
-      -0.035
-    ],
-    "width": 0.3,
-    "height": 0.07
-  },
-  {
-    "component_id": 28,
-    "segment_id": 0,
-    "material": "gold",
-    "current": 0.53,
-    "start": [
-      5.6,
-      -7.2,
-      -0.035
-    ],
-    "end": [
-      5.6,
-      8.8,
-      -0.035
-    ],
-    "width": 0.3,
-    "height": 0.07
-  },
-  {
-    "component_id": 29,
-    "segment_id": 0,
-    "material": "gold",
-    "current": 0.0,
-    "start": [
-      6.0,
-      -6.7,
-      -0.035
-    ],
-    "end": [
-      6.0,
-      9.3,
-      -0.035
-    ],
-    "width": 0.3,
-    "height": 0.07
-  },
-  {
-    "component_id": 30,
-    "segment_id": 0,
-    "material": "copper",
-    "current": 0.0,
-    "start": [
-      -31.0,
-      4.9,
-      -0.485
-    ],
-    "end": [
-      31.0,
-      4.9,
-      -0.485
-    ],
-    "width": 1.5,
-    "height": 0.07
-  },
-  {
-    "component_id": 31,
-    "segment_id": 0,
-    "material": "copper",
-    "current": 13.8,
-    "start": [
-      -40.2,
-      14.0,
-      -50.485
-    ],
-    "end": [
-      -40.2,
-      14.0,
-      -0.485
-    ],
-    "width": 1.0,
-    "height": 0.07
-  },
-  {
-    "component_id": 31,
-    "segment_id": 1,
-    "material": "copper",
-    "current": 13.8,
-    "start": [
-      -41.43,
-      14.03,
-      -0.485
-    ],
-    "end": [
-      -34.83,
-      7.43,
-      -0.485
-    ],
-    "width": 2.0,
-    "height": 0.07
-  },
-  {
-    "component_id": 31,
-    "segment_id": 2,
-    "material": "copper",
-    "current": 13.8,
-    "start": [
-      -34.83,
-      7.43,
-      -0.485
-    ],
-    "end": [
-      -34.83,
-      4.83,
-      -0.485
-    ],
-    "width": 2.0,
-    "height": 0.07
-  },
-  {
-    "component_id": 31,
-    "segment_id": 3,
-    "material": "copper",
-    "current": 13.8,
-    "start": [
-      -34.83,
-      4.83,
-      -0.485
-    ],
-    "end": [
-      -33.03,
-      3.05,
-      -0.485
-    ],
-    "width": 2.0,
-    "height": 0.07
-  },
-  {
-    "component_id": 31,
-    "segment_id": 4,
-    "material": "copper",
-    "current": 13.8,
-    "start": [
-      -33.03,
-      3.05,
-      -0.485
-    ],
-    "end": [
-      33.03,
-      3.05,
-      -0.485
-    ],
-    "width": 2.0,
-    "height": 0.07
-  },
-  {
-    "component_id": 31,
-    "segment_id": 5,
-    "material": "copper",
-    "current": 13.8,
-    "start": [
-      33.03,
-      3.05,
-      -0.485
-    ],
-    "end": [
-      34.83,
-      4.83,
-      -0.485
-    ],
-    "width": 2.0,
-    "height": 0.07
-  },
-  {
-    "component_id": 31,
-    "segment_id": 6,
-    "material": "copper",
-    "current": 13.8,
-    "start": [
-      34.83,
-      4.83,
-      -0.485
-    ],
-    "end": [
-      34.83,
-      7.43,
-      -0.485
-    ],
-    "width": 2.0,
-    "height": 0.07
-  },
-  {
-    "component_id": 31,
-    "segment_id": 7,
-    "material": "copper",
-    "current": 13.8,
-    "start": [
-      34.83,
-      7.43,
-      -0.485
-    ],
-    "end": [
-      41.43,
-      14.03,
-      -0.485
-    ],
-    "width": 2.0,
-    "height": 0.07
-  },
-  {
-    "component_id": 31,
-    "segment_id": 8,
-    "material": "copper",
-    "current": 13.8,
-    "start": [
-      40.2,
-      14.0,
-      -0.485
-    ],
-    "end": [
-      40.2,
-      14.0,
-      -50.485
-    ],
-    "width": 1.0,
-    "height": 0.07
-  },
-  {
-    "component_id": 32,
-    "segment_id": 0,
-    "material": "copper",
-    "current": 13.8,
-    "start": [
-      -40.2,
-      8.47,
-      -50.485
-    ],
-    "end": [
-      -40.2,
-      8.47,
-      -0.485
-    ],
-    "width": 1.0,
-    "height": 0.07
-  },
-  {
-    "component_id": 32,
-    "segment_id": 1,
-    "material": "copper",
-    "current": 13.8,
-    "start": [
-      -40.6,
-      8.1,
-      -0.485
-    ],
-    "end": [
-      -34.2,
-      1.45,
-      -0.485
-    ],
-    "width": 1.0,
-    "height": 0.07
-  },
-  {
-    "component_id": 32,
-    "segment_id": 2,
-    "material": "copper",
-    "current": 13.8,
-    "start": [
-      -34.2,
-      1.45,
-      -0.485
-    ],
-    "end": [
-      34.2,
-      1.45,
-      -0.485
-    ],
-    "width": 1.0,
-    "height": 0.07
-  },
-  {
-    "component_id": 32,
-    "segment_id": 3,
-    "material": "copper",
-    "current": 13.8,
-    "start": [
-      34.2,
-      1.45,
-      -0.485
-    ],
-    "end": [
-      40.6,
-      8.1,
-      -0.485
-    ],
-    "width": 1.0,
-    "height": 0.07
-  },
-  {
-    "component_id": 32,
-    "segment_id": 4,
-    "material": "copper",
-    "current": 13.8,
-    "start": [
-      40.2,
-      8.47,
-      -0.485
-    ],
-    "end": [
-      40.2,
-      8.47,
-      -50.485
-    ],
-    "width": 1.0,
-    "height": 0.07
-  },
-  {
-    "component_id": 33,
-    "segment_id": 0,
-    "material": "copper",
-    "current": -3.7,
-    "start": [
-      -40.2,
-      3.7,
-      -50.485
-    ],
-    "end": [
-      -40.2,
-      3.7,
-      -0.485
-    ],
-    "width": 1.0,
-    "height": 0.07
-  },
-  {
-    "component_id": 33,
-    "segment_id": 1,
-    "material": "copper",
-    "current": -3.7,
-    "start": [
-      -39.875,
-      2.4,
-      -0.485
-    ],
-    "end": [
-      -34.875,
-      0.6,
-      -0.485
-    ],
-    "width": 0.5,
-    "height": 0.07
-  },
-  {
-    "component_id": 33,
-    "segment_id": 2,
-    "material": "copper",
-    "current": -3.7,
-    "start": [
-      -34.875,
-      0.6,
-      -0.485
-    ],
-    "end": [
-      34.875,
-      0.6,
-      -0.485
-    ],
-    "width": 0.5,
-    "height": 0.07
-  },
-  {
-    "component_id": 33,
-    "segment_id": 3,
-    "material": "copper",
-    "current": -3.7,
-    "start": [
-      34.875,
-      0.6,
-      -0.485
-    ],
-    "end": [
-      39.875,
-      2.4,
-      -0.485
-    ],
-    "width": 0.5,
-    "height": 0.07
-  },
-  {
-    "component_id": 33,
-    "segment_id": 4,
-    "material": "copper",
-    "current": -3.7,
-    "start": [
-      40.2,
-      3.7,
-      -0.485
-    ],
-    "end": [
-      40.2,
-      3.7,
-      -50.485
-    ],
-    "width": 1.0,
-    "height": 0.07
-  },
-  {
-    "component_id": 34,
-    "segment_id": 0,
-    "material": "copper",
-    "current": -3.7,
-    "start": [
-      -40.2,
-      0.0,
-      -50.485
-    ],
-    "end": [
-      -40.2,
-      0.0,
-      -0.485
-    ],
-    "width": 1.0,
-    "height": 0.07
-  },
-  {
-    "component_id": 34,
-    "segment_id": 1,
-    "material": "copper",
-    "current": -3.7,
-    "start": [
-      -38.9,
-      0.0,
-      -0.485
-    ],
-    "end": [
-      38.9,
-      0.0,
-      -0.485
-    ],
-    "width": 0.5,
-    "height": 0.07
-  },
-  {
-    "component_id": 34,
-    "segment_id": 2,
-    "material": "copper",
-    "current": -3.7,
-    "start": [
-      40.2,
-      0.0,
-      -0.485
-    ],
-    "end": [
-      40.2,
-      0.0,
-      -50.485
-    ],
-    "width": 1.0,
-    "height": 0.07
-  },
-  {
-    "component_id": 35,
-    "segment_id": 0,
-    "material": "copper",
-    "current": -3.7,
-    "start": [
-      -40.2,
-      -3.7,
-      -50.485
-    ],
-    "end": [
-      -40.2,
-      -3.7,
-      -0.485
-    ],
-    "width": 1.0,
-    "height": 0.07
-  },
-  {
-    "component_id": 35,
-    "segment_id": 1,
-    "material": "copper",
-    "current": -3.7,
-    "start": [
-      -39.875,
-      -2.4,
-      -0.485
-    ],
-    "end": [
-      -34.875,
-      -0.6,
-      -0.485
-    ],
-    "width": 0.5,
-    "height": 0.07
-  },
-  {
-    "component_id": 35,
-    "segment_id": 2,
-    "material": "copper",
-    "current": -3.7,
-    "start": [
-      -34.875,
-      -0.6,
-      -0.485
-    ],
-    "end": [
-      34.875,
-      -0.6,
-      -0.485
-    ],
-    "width": 0.5,
-    "height": 0.07
-  },
-  {
-    "component_id": 35,
-    "segment_id": 3,
-    "material": "copper",
-    "current": -3.7,
-    "start": [
-      34.875,
-      -0.6,
-      -0.485
-    ],
-    "end": [
-      39.875,
-      -2.4,
-      -0.485
-    ],
-    "width": 0.5,
-    "height": 0.07
-  },
-  {
-    "component_id": 35,
-    "segment_id": 4,
-    "material": "copper",
-    "current": -3.7,
-    "start": [
-      40.2,
-      -3.7,
-      -0.485
-    ],
-    "end": [
-      40.2,
-      -3.7,
-      -50.485
-    ],
-    "width": 1.0,
-    "height": 0.07
-  },
-  {
-    "component_id": 36,
-    "segment_id": 0,
-    "material": "copper",
-    "current": 13.8,
-    "start": [
-      -40.2,
-      -8.47,
-      -50.485
-    ],
-    "end": [
-      -40.2,
-      -8.47,
-      -0.485
-    ],
-    "width": 1.0,
-    "height": 0.07
-  },
-  {
-    "component_id": 36,
-    "segment_id": 1,
-    "material": "copper",
-    "current": 13.8,
-    "start": [
-      -40.6,
-      -8.1,
-      -0.485
-    ],
-    "end": [
-      -34.2,
-      -1.45,
-      -0.485
-    ],
-    "width": 1.0,
-    "height": 0.07
-  },
-  {
-    "component_id": 36,
-    "segment_id": 2,
-    "material": "copper",
-    "current": 13.8,
-    "start": [
-      -34.2,
-      -1.45,
-      -0.485
-    ],
-    "end": [
-      34.2,
-      -1.45,
-      -0.485
-    ],
-    "width": 1.0,
-    "height": 0.07
-  },
-  {
-    "component_id": 36,
-    "segment_id": 3,
-    "material": "copper",
-    "current": 13.8,
-    "start": [
-      34.2,
-      -1.45,
-      -0.485
-    ],
-    "end": [
-      40.6,
-      -8.1,
-      -0.485
-    ],
-    "width": 1.0,
-    "height": 0.07
-  },
-  {
-    "component_id": 36,
-    "segment_id": 4,
-    "material": "copper",
-    "current": 13.8,
-    "start": [
-      40.2,
-      -8.47,
-      -0.485
-    ],
-    "end": [
-      40.2,
-      -8.47,
-      -50.485
-    ],
-    "width": 1.0,
-    "height": 0.07
-  },
-  {
-    "component_id": 37,
-    "segment_id": 0,
-    "material": "copper",
-    "current": 13.8,
-    "start": [
-      -40.2,
-      -14.0,
-      -50.485
-    ],
-    "end": [
-      -40.2,
-      -14.0,
-      -0.485
-    ],
-    "width": 1.0,
-    "height": 0.07
-  },
-  {
-    "component_id": 37,
-    "segment_id": 1,
-    "material": "copper",
-    "current": 13.8,
-    "start": [
-      -41.43,
-      -14.03,
-      -0.485
-    ],
-    "end": [
-      -34.83,
-      -7.43,
-      -0.485
-    ],
-    "width": 2.0,
-    "height": 0.07
-  },
-  {
-    "component_id": 37,
-    "segment_id": 2,
-    "material": "copper",
-    "current": 13.8,
-    "start": [
-      -34.83,
-      -7.43,
-      -0.485
-    ],
-    "end": [
-      -34.83,
-      -4.83,
-      -0.485
-    ],
-    "width": 2.0,
-    "height": 0.07
-  },
-  {
-    "component_id": 37,
-    "segment_id": 3,
-    "material": "copper",
-    "current": 13.8,
-    "start": [
-      -34.83,
-      -4.83,
-      -0.485
-    ],
-    "end": [
-      -33.03,
-      -3.05,
-      -0.485
-    ],
-    "width": 2.0,
-    "height": 0.07
-  },
-  {
-    "component_id": 37,
-    "segment_id": 4,
-    "material": "copper",
-    "current": 13.8,
-    "start": [
-      -33.03,
-      -3.05,
-      -0.485
-    ],
-    "end": [
-      33.03,
-      -3.05,
-      -0.485
-    ],
-    "width": 2.0,
-    "height": 0.07
-  },
-  {
-    "component_id": 37,
-    "segment_id": 5,
-    "material": "copper",
-    "current": 13.8,
-    "start": [
-      33.03,
-      -3.05,
-      -0.485
-    ],
-    "end": [
-      34.83,
-      -4.83,
-      -0.485
-    ],
-    "width": 2.0,
-    "height": 0.07
-  },
-  {
-    "component_id": 37,
-    "segment_id": 6,
-    "material": "copper",
-    "current": 13.8,
-    "start": [
-      34.83,
-      -4.83,
-      -0.485
-    ],
-    "end": [
-      34.83,
-      -7.43,
-      -0.485
-    ],
-    "width": 2.0,
-    "height": 0.07
-  },
-  {
-    "component_id": 37,
-    "segment_id": 7,
-    "material": "copper",
-    "current": 13.8,
-    "start": [
-      34.83,
-      -7.43,
-      -0.485
-    ],
-    "end": [
-      41.43,
-      -14.03,
-      -0.485
-    ],
-    "width": 2.0,
-    "height": 0.07
-  },
-  {
-    "component_id": 37,
-    "segment_id": 8,
-    "material": "copper",
-    "current": 13.8,
-    "start": [
-      40.2,
-      -14.0,
-      -0.485
-    ],
-    "end": [
-      40.2,
-      -14.0,
-      -50.485
-    ],
-    "width": 1.0,
-    "height": 0.07
-  },
-  {
-    "component_id": 38,
-    "segment_id": 0,
-    "material": "copper",
-    "current": 0.0,
-    "start": [
-      -31.0,
-      -4.9,
-      -0.485
-    ],
-    "end": [
-      31.0,
-      -4.9,
-      -0.485
-    ],
-    "width": 1.5,
-    "height": 0.07
+      0.0
+    ],
+    "stray_fields": [
+      1.0,
+      1.0,
+      0.0
+    ]
   }
-]
+}
