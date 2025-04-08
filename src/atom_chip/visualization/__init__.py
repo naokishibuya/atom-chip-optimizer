@@ -100,6 +100,7 @@ class Visualizer:
                 break
         if not self._plot_windows:
             print("All figures closed.")
+            sys.exit(0)
 
 
 def _load_config(yaml_path: str):
