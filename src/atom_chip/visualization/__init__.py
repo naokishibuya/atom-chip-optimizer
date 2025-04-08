@@ -24,9 +24,6 @@ __all__ = [
 ]
 
 
-QApplication.instance()  # Initialize QApplication if not already done
-
-
 def show(atom_chip: AtomChip, yaml_path: str):
     # Parse command-line arguments
     if "--no-show" in sys.argv:
@@ -44,17 +41,12 @@ class Visualizer:
     def __init__(self, config_path: str):
         self._plot_windows = {}
         self._config = _load_config(config_path)
-        self._is_alive = True
 
         # Initialize the top-left position
         self._global_top = self._config.get("top", 0)
         self._global_left = self._config.get("left", 0)
         self._top = self._global_top
         self._left = self._global_left
-
-    @property
-    def is_alive(self):
-        return self._is_alive
 
     def update(self, atom_chip: AtomChip):
         plt.ion()
@@ -106,7 +98,6 @@ class Visualizer:
                 break
         if not self._plot_windows:
             print("All figures closed.")
-            self.is_alive = False
 
 
 def _load_config(yaml_path: str):

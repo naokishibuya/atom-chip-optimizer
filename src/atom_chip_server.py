@@ -1,8 +1,12 @@
 import os
 import threading
 import queue
+import signal
+import sys
 import uvicorn
 from fastapi import FastAPI, Request
+from PyQt5.QtCore import QTimer
+from PyQt5.QtWidgets import QApplication
 import atom_chip as ac
 
 
@@ -63,26 +67,19 @@ atom_chip = ac.AtomChip(
 visualizer = ac.visualization.Visualizer(os.path.join(RUN_DIR, "atom_chip_server.yaml"))
 
 layout_queue = queue.Queue()
-condition = threading.Condition()
 
 
-def main_loop():
-    while visualizer.is_alive:
-        with condition:
-            condition.wait(timeout=1)
-        try:
-            layout = layout_queue.get_nowait()
-        except queue.Empty:
-            continue  # check again
-
-        print("Processing simulation job...")
-        try:
-            atom_chip.process_json(layout)
-            atom_chip.analyze(options)
-            visualizer.update(atom_chip)
-        except Exception as e:
-            print(f"Error processing simulation job: {e}")
-            continue
+def process_job():
+    if layout_queue.empty():
+        return
+    print("Processing simulation job...")
+    layout = layout_queue.get()
+    try:
+        atom_chip.process_json(layout)
+        atom_chip.analyze(options)
+        visualizer.update(atom_chip)
+    except Exception as e:
+        print(f"Error processing simulation job: {e}")
 
 
 app = FastAPI()
@@ -93,10 +90,8 @@ async def simulate(request: Request):
     print("Received simulation request:")
     try:
         layout = await request.json()
-        with condition:
-            layout_queue.queue.clear()
-            layout_queue.put(layout)
-            condition.notify()
+        layout_queue.queue.clear()
+        layout_queue.put(layout)
     except Exception as e:
         print(f"Error processing request: {e}")
         return {"status": "error", "message": str(e)}
@@ -107,6 +102,29 @@ def server_thread():
     uvicorn.run(app, host="127.0.0.1", port=8000)
 
 
-if __name__ == "__main__":
+def signal_handler(signum, frame):
+    print(f"Signal {signum} received, shutting down...")
+    QApplication.quit()
+
+
+signal.signal(signal.SIGINT, signal_handler)
+
+
+def main():
+    # Start FastAPI server in a separate thread
     threading.Thread(target=server_thread, daemon=True).start()
-    main_loop()
+
+    # Qt application setup
+    app = QApplication(sys.argv)
+
+    # Create a timer to periodically check for new jobs
+    timer = QTimer()
+    timer.timeout.connect(process_job)
+    timer.start(100)  # Check every 100 ms
+
+    # Start the event loop
+    app.exec_()
+
+
+if __name__ == "__main__":
+    main()

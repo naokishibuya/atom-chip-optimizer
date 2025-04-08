@@ -53,7 +53,7 @@ def plot_potential_3d(
         ax_slider = fig.add_axes([0.15, 0.05, 0.7, 0.03])  # [left, bottom, width, height]
         slider = Slider(
             ax_slider,
-            "Z",
+            "z [mm]",
             z_vals[0],
             z_vals[-1],
             valinit=initial_z,
