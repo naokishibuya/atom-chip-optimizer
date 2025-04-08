@@ -20,14 +20,14 @@ DEFAULT_MATERIAL = "copper"
 # fmt: off
 MATERIAL_COLORS = {
     "copper": [
-        [1.0 , 0.4 , 0.2, 1.0],  # For positive current
-        [0.2 , 0.4 , 1.0, 1.0],  # For negative current
-        [0.78, 0.46, 0.1, 0.5],  # For zero current
+        [1.0, 0.40, 0.2, 1.0],  # For positive current
+        [0.2, 0.40, 1.0, 1.0],  # For negative current
+        [1.0, 0.40, 0.2, 0.1],  # For zero current
     ],
     "gold": [
-        [1.0 , 0.84, 0.0, 1.0],  # For positive current
-        [0.0 , 0.84, 1.0, 1.0],  # For negative current
-        [0.78, 0.76, 0.0, 0.5],  # For zero current
+        [1.0, 0.84, 0.0, 1.0],  # For positive current
+        [0.2, 0.84, 1.0, 1.0],  # For negative current
+        [1.0, 0.84, 0.0, 0.1],  # For zero current
     ],
 }
 # fmt: on
@@ -93,6 +93,7 @@ def add_current_markers(obj):
     marker1.scale = (0.05, 1.0, 1.01)
     marker1.parent = obj
     marker1.matrix_parent_inverse.identity()  # Don't inherit scale from parent
+    marker1.hide_select = True  # Hide from selection
 
     # Create marker2 (cube)
     bpy.ops.mesh.primitive_cube_add(size=1)
@@ -102,6 +103,7 @@ def add_current_markers(obj):
     marker2.scale = (0.05, 1.0, 1.01)
     marker2.parent = obj
     marker2.matrix_parent_inverse.identity()  # Don't inherit scale from parent
+    marker2.hide_select = True  # Hide from selection
 
 
 def update_material_color(obj):
@@ -117,8 +119,22 @@ def update_material_color(obj):
     obj.data.materials.append(mat)
 
     # Update the color of the current markers
-    cs_mat = get_current_source_material(material, current)
-    marker1_mat, marker2_mat = (cs_mat, mat) if current > 0 else (mat, cs_mat) if current < 0 else (mat, mat)
+    if current > 0:
+        # Positive current
+        marker1_mat = get_current_source_material(material, current, "+")
+        marker2_mat = get_current_source_material(material, current, "-")
+    elif current < 0:
+        # Negative current
+        marker1_mat = get_current_source_material(material, current, "-")
+        marker2_mat = get_current_source_material(material, current, "+")
+    else:
+        # no current
+        marker1_mat = mat
+        marker2_mat = mat
+
+    # Get the current scene
+    scene = bpy.context.scene
+    show = scene.show_atom_chip_markers
 
     # Update the color of the current markers
     marker1_key = f"{obj.name}_current_marker_1"
@@ -126,24 +142,32 @@ def update_material_color(obj):
         marker1 = bpy.data.objects[marker1_key]
         marker1.data.materials.clear()
         marker1.data.materials.append(marker1_mat)
+        marker1.hide_set(not show)
 
     marker2_key = f"{obj.name}_current_marker_2"
     if marker2_key in bpy.data.objects:
         marker2 = bpy.data.objects[marker2_key]
         marker2.data.materials.clear()
         marker2.data.materials.append(marker2_mat)
+        marker2.hide_set(not show)
 
 
-def get_current_source_material(material, current):
+def get_current_source_material(material, current, sign):
     # Get the color based on the current direction
     index = 0 if current > 0 else 1 if current < 0 else 2
-    key = f"CURRENT_SOURCE:{material}:{index}"
+    key = f"CURRENT_SOURCE:{material}:{index}:{sign}"
     if key in bpy.data.materials:
         return bpy.data.materials[key]  # Already cached
 
-    # make it yellowish
     r, g, b, a = MATERIAL_COLORS[material][index]
-    color = [min(r + 0.2, 1.0), min(g + 0.2, 1.0), b, a]
+    if sign == "+":
+        # make it darker for current source
+        diff = 0.2
+        color = [max(0.0, r - diff), max(0.0, g - diff), max(0.0, b - diff), a]
+    elif sign == "-":
+        # make it lighter for current sink
+        diff = 0.2
+        color = [min(1.0, r + diff), min(1.0, g + diff), min(1.0, b + diff), a]
 
     # Create a new material with the specified color
     mat = bpy.data.materials.new(name=key)
@@ -200,6 +224,13 @@ def update_material(self, context):
             update_material_color(obj)
 
 
+def update_current_marker_visibility(scene, context):
+    show = scene.show_atom_chip_markers
+    for obj in bpy.data.objects:
+        if "_current_marker_" in obj.name:
+            obj.hide_set(not show)
+
+
 def register():
     bpy.types.Object.component_id = bpy.props.IntProperty(name="Component ID")
     bpy.types.Object.segment_id = bpy.props.IntProperty(name="Segment ID")
@@ -214,12 +245,19 @@ def register():
         default=0.0,
         update=update_current,
     )
+    bpy.types.Scene.show_atom_chip_markers = bpy.props.BoolProperty(
+        name="Show Current Markers",
+        default=False,
+        description="Toggle visibility of current direction markers",
+        update=update_current_marker_visibility,
+    )
     bpy.utils.register_class(AtomChipPropertiesPanel)
 
 
 def unregister():
-    bpy.utils.unregister_class(AtomChipPropertiesPanel)
     del bpy.types.Object.component_id
     del bpy.types.Object.segment_id
     del bpy.types.Object.material
     del bpy.types.Object.current
+    del bpy.types.Scene.show_atom_chip_markers
+    bpy.utils.unregister_class(AtomChipPropertiesPanel)

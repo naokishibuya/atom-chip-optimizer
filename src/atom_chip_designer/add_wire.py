@@ -112,6 +112,7 @@ class AtomChipToolsPanel(Panel):
     def draw(self, context):
         layout = self.layout
         layout.operator("object.add_atom_chip_wire", icon="MESH_CUBE")
+        layout.prop(context.scene, "show_atom_chip_markers")  # toggle visibility of markers
 
 
 # === Registration Management ===
