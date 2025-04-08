@@ -47,6 +47,7 @@ class Visualizer:
         self._global_left = self._config.get("left", 0)
         self._top = self._global_top
         self._left = self._global_left
+        self._bottom = 0
 
     def update(self, atom_chip: AtomChip):
         plt.ion()
@@ -81,11 +82,12 @@ class Visualizer:
         width, height = window.geometry().getRect()[2:]
         top, left = self._top, self._left
         if left + width > screen_width:
-            top = self._global_top + height + 50
+            top = self._bottom + 40
             left = self._global_left
             if top + height > screen_height:
                 top = self._global_top
         window.setGeometry(left, top, width, height)
+        self._bottom = top + height
         self._top = top
         self._left = left + width + 10
 
