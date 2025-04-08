@@ -1,6 +1,6 @@
 from typing import Optional, Tuple
 import matplotlib.pyplot as plt
-from matplotlib.animation import FuncAnimation
+from matplotlib.widgets import Slider
 from mpl_toolkits.mplot3d.art3d import Poly3DCollection
 import numpy as np
 from ..atom_chip import AtomChip
@@ -28,34 +28,44 @@ def plot_potential_3d(
     if fig is None:
         fig = plt.figure(figsize=size)
     else:
-        if fig._anim is not None:
-            fig._anim.event_source.stop()
-            fig._anim = None
         fig.clear()
     ax = fig.add_subplot(111, projection="3d")
 
-    if z_range is not None:
-        start, stop, num_intervals = z_range
-        num_points = num_intervals + 1
-        z_vals = np.linspace(start, stop, num_points)
-
-        def update(frame):
-            ax.clear()
-            # Compute potentials at each point
-            z = z_vals[frame]
-            surf = _plot_3d_trapping_potential(atom_chip, ax, X, Y, z, zlim)
-            return (surf,)
-
-        # keep the animation object alive
-        fig._anim = FuncAnimation(fig, update, frames=len(z_vals), interval=1000, blit=False)
-        surf = update(0)[0]
+    if z_range:
+        z_vals = np.linspace(*z_range)
+        initial_z = z_vals[0]
+    elif z is not None:
+        initial_z = z
+        z_vals = [z]
     else:
-        # Plot 3D trapping potential at a fixed z value
-        surf = _plot_3d_trapping_potential(atom_chip, ax, X, Y, z, zlim)
+        initial_z = atom_chip.trap.minimum.position[2]
+        z_vals = [initial_z]
+
+    # Initial plot
+    surf = _plot_3d_trapping_potential(atom_chip, ax, X, Y, initial_z, zlim)
 
     # Colorbar
     fig.colorbar(surf, ax=ax, shrink=0.6, aspect=10, label="Energy [μK]", pad=0.1)
     fig.tight_layout()
+
+    # Slider
+    if z_range:
+        ax_slider = fig.add_axes([0.15, 0.05, 0.7, 0.03])  # [left, bottom, width, height]
+        slider = Slider(
+            ax_slider,
+            "Z",
+            z_vals[0],
+            z_vals[-1],
+            valinit=initial_z,
+        )
+
+        def update(val):
+            ax.clear()
+            _plot_3d_trapping_potential(atom_chip, ax, X, Y, val, zlim)
+            fig.canvas.draw_idle()
+
+        slider.on_changed(update)
+        fig._slider = slider  # Prevent garbage collection
     return fig
 
 
