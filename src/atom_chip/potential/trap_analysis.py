@@ -55,11 +55,12 @@ class Frequency:
 @register_dataclass
 @dataclass
 class BECAnalysis:
-    a_ho : float        # Geometric mean of a_ho (average H.O. length) [m]
-    w_ho : float        # Geometric mean trap frequency (angular) [rad/s]
-    mu_0 : float        # Chemical potential in the non-interacting limit [J]
-    radii: jnp.ndarray  # Harmonic oscillator length in each direction [m]
-    T_c  : float        # Critical temperature [K]
+    total_atoms: int          # Total number of atoms in the trap
+    a_ho       : float        # Geometric mean of a_ho (average H.O. length) [m]
+    w_ho       : float        # Geometric mean trap frequency (angular) [rad/s]
+    mu_0       : float        # Chemical potential in the non-interacting limit [J]
+    radii      : jnp.ndarray  # Harmonic oscillator length in each direction [m]
+    T_c        : float        # Critical temperature [K]
 # fmt: on
 
 
@@ -78,8 +79,9 @@ class BECAnalysis:
 @register_dataclass
 @dataclass
 class ThomasFermiAnalysis:
-    mu   : float        # Thomas-Fermi chemical potential [J]
-    radii: jnp.ndarray  # Thomas-Fermi radii in each direction [m]
+    condensed_atoms: int          # Number of condensed atoms in the trap
+    mu             : float        # Thomas-Fermi chemical potential [J]
+    radii          : jnp.ndarray  # Thomas-Fermi radii in each direction [m]
 # fmt: on
 
 
@@ -231,9 +233,9 @@ def analyze_trap(
 
     # Step 4: Larmor Frequency
     _, B_mag, _ = potential_function(minimum.position)
-    larmor = larmor_frequency(atom, B_mag)
+    larmor = larmor_frequency(atom, B_mag[0])
     if options.verbose:
-        print("Magnetic field (G):", B_mag)
+        print("Magnetic field (G):", B_mag[0])
         print("Larmor frequency (MHz):", larmor.frequency * 1e-6)
 
     # -----------------------------------------------------------------------
@@ -282,6 +284,9 @@ def analyze_trap(
 def trap_frequencies(eigenvalues: jnp.ndarray, mass: float):
     """
     Calculates trap frequencies from Hessian eigenvalues.
+
+    Oscillation frequencies of atoms in the trap.
+    (how fast atoms oscillate in the trap)
     """
     eigenvalues = eigenvalues * 1e6  # J/mm^2 -> J/m^2
     angular = jnp.sqrt(eigenvalues / mass)
@@ -293,6 +298,9 @@ def trap_frequencies(eigenvalues: jnp.ndarray, mass: float):
 def larmor_frequency(atom: Atom, B_mag: jnp.ndarray) -> Frequency:
     """
     Calculates Larmor frequency from magnetic field strength.
+
+    Precession rate of an atom's magnetic moment in an external magnetic field.
+    (how fast tiny internal magnets wobble in a magnetic field)
     """
     # B_mag is in [G]: convert to [T] by 1e-4
     # mu B_mag is in [J/T] where mu = gF mF muB
@@ -308,13 +316,24 @@ def analyze_bec_non_interacting(
     trap_frequency: Frequency,
     total_atoms: int,
 ) -> BECAnalysis:
+    """
+    Analyzes the non-interacting BEC properties based on the harmonic oscillator model.
+    Assumes low atom number and weak interactions.
+
+    Harmonic oscillator length (a_ho) gives a sense of the spatial extent of the ground state wavefunction of
+    the harmonic oscillator.
+
+    Chemical potential at T=0 (mu_0) is the energy of the ground state of the harmonic oscillator.
+    At absolute zero, all particles in a non-interacting BEC will occupy the lowest energy state (the ground state).
+    """
     omega = trap_frequency.angular
-    w_ho = jnp.prod(omega) ** (1 / 3)  # geometric mean
+    w_ho = jnp.prod(omega) ** (1 / 3)  # geometric mean of trap frequencies
     a_ho = jnp.sqrt(constants.hbar / (atom.mass * w_ho))
     mu_0 = 0.5 * constants.hbar * jnp.sum(omega)  # ground state energy of the harmonic oscillator
     radii = jnp.sqrt(constants.hbar / (atom.mass * omega))
     T_c = 0.94 * constants.hbar / constants.kB * w_ho * total_atoms ** (1 / 3)
     return BECAnalysis(
+        total_atoms=total_atoms,
         a_ho=a_ho,
         w_ho=w_ho,
         mu_0=mu_0,
@@ -330,9 +349,25 @@ def analyze_bec_thomas_fermi(
     trap_frequency: Frequency,
     condensed_atoms: int,
 ) -> ThomasFermiAnalysis:
+    """
+    Analyzes the Thomas-Fermi BEC properties based on the mean-field limit.
+    Assumes large condensed atom number and strong interactions.
+    (Thomas-Fermi approximation neglects kinetic energy)
+
+    The strong repulsive interactions cause the condensate to expand and its density profile becomes
+    inverted parabolic or a lens shape within the spatial extent of the trap.
+
+    The density is nearly uniform in the center and drops to zero at the edges, defined by the Thomas-Fermi radius.
+    This shape arises because the interaction energy dominates over the kinetic energy, and the condensate
+    expands until the outward pressure from interactions balances the inward trapping potential.
+    """
     omega = trap_frequency.angular
     w_ho = jnp.prod(omega) ** (1 / 3)  # geometric mean
     a_ho = jnp.sqrt(constants.hbar / (atom.mass * w_ho))
     mu = 0.5 * constants.hbar * w_ho * (15 * atom.a_s * condensed_atoms / a_ho) ** (2 / 5)
     radii = jnp.sqrt(2 * mu / atom.mass) / omega
-    return ThomasFermiAnalysis(mu=mu, radii=radii)
+    return ThomasFermiAnalysis(
+        condensed_atoms=condensed_atoms,
+        mu=mu,
+        radii=radii,
+    )

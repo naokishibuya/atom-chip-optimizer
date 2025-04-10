@@ -34,7 +34,7 @@ options = ac.potential.AnalysisOptions(
     ),
     # for the trap analayis (not used for field analysis)
     total_atoms=1e5,
-    condensed_atoms=5e4,
+    condensed_atoms=1e5,
     verbose = True,
 )
 # fmt: on
@@ -51,7 +51,7 @@ atom_chip = ac.AtomChip(
 
 
 # Loading visualizer configuration
-visualizer = ac.visualization.Visualizer(os.path.join(RUN_DIR, "atom_chip_server.yaml"))
+visualizer = ac.visualization.Visualizer(os.path.join(RUN_DIR, "visualization.yaml"))
 
 layout_queue = queue.Queue()
 

@@ -32,8 +32,8 @@ def plot_potential_3d(
     ax = fig.add_subplot(111, projection="3d")
 
     if z_range:
-        z_vals = np.linspace(*z_range)
-        initial_z = z_vals[0]
+        z_vals = np.linspace(z_range[0], z_range[1], z_range[2] + 1)
+        initial_z = z_vals[len(z_vals) // 2]
     elif z is not None:
         initial_z = z
         z_vals = [z]

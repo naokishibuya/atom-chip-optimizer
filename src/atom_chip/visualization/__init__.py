@@ -12,6 +12,7 @@ from .layout_3d import plot_layout_3d
 from .potential_1d import plot_potential_1d
 from .potential_2d import plot_potential_2d
 from .potential_3d import plot_potential_3d
+from .summary_text import show_summary
 
 
 __all__ = [
@@ -20,6 +21,7 @@ __all__ = [
     "plot_potential_1d",
     "plot_potential_2d",
     "plot_potential_3d",
+    "show_summary",
     "Visualizer",
 ]
 
@@ -87,7 +89,7 @@ class Visualizer:
             if top + height > screen_height:
                 top = self._global_top
         window.setGeometry(left, top, width, height)
-        self._bottom = top + height
+        self._bottom = max(self._bottom, top + height)
         self._top = top
         self._left = left + width + 10
 

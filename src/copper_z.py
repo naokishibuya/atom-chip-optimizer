@@ -135,7 +135,7 @@ def main():
         ),
         # for the trap analayis (not used for field analysis)
         total_atoms=1e5,
-        condensed_atoms=5e4,
+        condensed_atoms=1e5,
         verbose = True,
     )
     # fmt: on
@@ -151,7 +151,7 @@ def main():
     atom_chip.to_json(os.path.join(directory, "copper_z.json"))
 
     # Perform the visualization
-    ac.visualization.show(atom_chip, os.path.join(directory, "copper_z.yaml"))
+    ac.visualization.show(atom_chip, os.path.join(directory, "visualization.yaml"))
 
 
 if __name__ == "__main__":
