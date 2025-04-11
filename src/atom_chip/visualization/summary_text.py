@@ -1,41 +1,67 @@
 from typing import List, Tuple
+import platform
 import matplotlib.pyplot as plt
+from PyQt5.QtWidgets import QWidget, QVBoxLayout, QTextEdit
+from PyQt5.QtGui import QFont
 from atom_chip.atom_chip import AtomChip
+
+
+def get_monospaced_font() -> str:
+    system = platform.system()
+    if system == "Windows":
+        font_family = "Courier New"
+    elif system == "Darwin":
+        font_family = "Menlo"
+    else:
+        font_family = "DejaVu Sans Mono"
+    return font_family
 
 
 def show_summary(
     atom_chip: AtomChip,
     size: Tuple[int, int],
-    font_family: str = "monospace",
-    font_size: int = 9,
-    box_style: str = "round,pad=0.5",
-    face_color: str = "whitesmoke",
-    edge_color: str = "gray",
-    vertical_alignment: str = "top",
-    horizontal_alignment: str = "left",
+    font_family: str = get_monospaced_font(),
+    font_size: int = 10,
     fig: plt.Figure = None,
 ) -> plt.Figure:
     if fig is None:
-        fig = plt.figure(figsize=size)
-    else:
-        fig.clear()
+        # Create dummy figure and canvas
+        fig, ax = plt.subplots(figsize=size)
+        ax.set_visible(False)  # Hide plot area
 
-    ax = fig.add_subplot(111)
-    ax.axis("off")
-    ax.text(
-        x=0.01,
-        y=0.99,
-        s=format_summary(atom_chip),
-        fontsize=font_size,
-        fontfamily=font_family,
-        verticalalignment=vertical_alignment,
-        horizontalalignment=horizontal_alignment,
-        bbox=dict(
-            boxstyle=box_style,
-            facecolor=face_color,
-            edgecolor=edge_color,
-        ),
-    )
+        # Set background and border
+        text_box = QTextEdit()
+        text_box.setReadOnly(True)
+        text_box.setFont(QFont(font_family, font_size))
+        text_box.setStyleSheet("""
+            background-color: whitesmoke;
+            border: 1px solid gray;
+            border-radius: 5px;
+            margin: 1px;
+            padding: 3px 15px;
+            color: black;
+        """)
+
+        # Create a central widget for the text box
+        central_widget = QWidget()
+        central_widget.setStyleSheet("""
+            background-color: #e5e5e5;
+            margin: 0;
+        """)
+
+        # Create a layout for the central widget
+        layout = QVBoxLayout(central_widget)
+        layout.addWidget(text_box)
+        central_widget.setLayout(layout)
+
+        # update window
+        fig.canvas.manager.window.setCentralWidget(central_widget)
+        fig.canvas.toolbar.setVisible(False)  # Hide toolbar
+
+        # Store reference to text box
+        fig.text_box = text_box
+
+    fig.text_box.setPlainText(format_summary(atom_chip))
     fig.tight_layout()
     return fig
 
