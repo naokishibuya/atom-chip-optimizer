@@ -309,7 +309,7 @@ def main():
 
     # Save the atom chip layout to a JSON file
     directory = os.path.dirname(__file__)
-    atom_chip.to_json(os.path.join(directory, "oyster.json"))
+    atom_chip.save(os.path.join(directory, "oyster.json"))
 
     # Perform the visualization
     ac.visualization.show(atom_chip, os.path.join(directory, "visualization.yaml"))

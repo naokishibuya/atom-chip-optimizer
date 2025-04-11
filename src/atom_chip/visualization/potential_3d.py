@@ -17,7 +17,7 @@ def plot_potential_3d(
     zlim: Optional[Tuple[float, float]] = None,
     fig: Optional[plt.Figure] = None,
 ):
-    if not atom_chip.trap.minimum.found:
+    if not atom_chip.potential.minimum.found:
         print("Minimum not found. Cannot plot potential.")
         return
 
@@ -38,7 +38,7 @@ def plot_potential_3d(
         initial_z = z
         z_vals = [z]
     else:
-        initial_z = atom_chip.trap.minimum.position[2]
+        initial_z = atom_chip.potential.minimum.position[2]
         z_vals = [initial_z]
 
     # Initial plot
@@ -78,7 +78,7 @@ def _plot_3d_trapping_potential(
     zlim: Tuple[float, float],  # z-axis limits for the plot
 ) -> Poly3DCollection:
     # Get the energy at a given z-coordinate or the minimum energy point
-    E_min = atom_chip.trap.minimum
+    E_min = atom_chip.potential.minimum
     z = z if z is not None else E_min.position[2]
     point = np.array([E_min.position[0], E_min.position[1], z])
     V_at_z = atom_chip.get_potentials(point)[0][0]

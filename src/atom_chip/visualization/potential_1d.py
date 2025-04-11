@@ -11,12 +11,12 @@ def plot_potential_1d(
     z_range: Tuple[float, float, int],
     fig: Optional[plt.Figure] = None,
 ):
-    if not atom_chip.trap.minimum.found:
+    if not atom_chip.potential.minimum.found:
         print("Minimum not found. Cannot plot potential.")
         return
 
     # Get the minimum energy point from the atom chip
-    x, y = atom_chip.trap.minimum.position[:2]
+    x, y = atom_chip.potential.minimum.position[:2]
     z_vals = np.linspace(*z_range)
 
     points = np.array([[x, y, z] for z in z_vals])

@@ -5,7 +5,7 @@ import time
 import jax.numpy as jnp
 from .components import RectangularConductor, RectangularSegment
 from .field import BiasFields, biot_savart_rectangular
-from .potential import Atom, AnalysisOptions, analyze_field, FieldAnalysis, analyze_trap, TrapAnalysis
+from .potential import Atom, AnalysisOptions, analyze_field, FieldAnalysis, analyze_trap, PotentialAnalysis
 
 
 class AtomChip:
@@ -32,7 +32,7 @@ class AtomChip:
 
         # Placeholders for analysis results
         self.field: FieldAnalysis = None
-        self.trap: TrapAnalysis = None
+        self.potential: PotentialAnalysis = None
 
     def get_fields(self, points: jnp.array) -> jnp.ndarray:
         """
@@ -78,7 +78,7 @@ class AtomChip:
         z = points[:, 2]
         return self.atom.potential_energy(B_mag, z), B_mag, B
 
-    def analyze(self, options: AnalysisOptions) -> TrapAnalysis:
+    def analyze(self, options: AnalysisOptions) -> PotentialAnalysis:
         """
         Analyze the trap using the given options. The analysises are saved in the object.
 
@@ -91,16 +91,34 @@ class AtomChip:
         print(f"Bias fields: {self.bias_fields.to_dict()}")
         start_time = time.time()
         self.field = analyze_field(self.atom, self.get_fields, options)
-        self.trap = analyze_trap(self.atom, self.get_potentials, options)
+        self.potential = analyze_trap(self.atom, self.get_potentials, options)
         end_time = time.time()
         print(f"Analysis completed in {end_time - start_time:.2f} seconds")
-        return self.trap
+        return self.potential
 
-    def to_json(self, path: str = None) -> str:
+    def save(self, path: str) -> str:
         """
-        Serialize the AtomChip to JSON format.
+        Save the AtomChip to a JSON file.
          - If a path is provided, the JSON is saved to that file.
          - Otherwise, the JSON string is returned.
+        """
+        data = self.to_json()
+        if path:
+            with open(path, "w") as f:
+                json.dump(data, f, indent=2)
+        return json.dumps(data, indent=2)
+
+    def load(self, path: str):
+        """
+        Load the AtomChip from a JSON file.
+        """
+        with open(path, "r") as f:
+            data = json.load(f)
+        self.from_json(data)
+
+    def to_json(self) -> List[dict]:
+        """
+        Serialize the AtomChip to JSON format.
         """
         wires = []
         for component_id, component in enumerate(self.components):
@@ -128,20 +146,9 @@ class AtomChip:
             "wires": wires,
             "bias_fields": self.bias_fields.to_dict(),
         }
-        if path:
-            with open(path, "w") as f:
-                json.dump(data, f, indent=2)
-        return json.dumps(data, indent=2)
+        return data
 
-    def from_json(self, path: str):
-        """
-        Load the AtomChip from a JSON file.
-        """
-        with open(path, "r") as f:
-            data = json.load(f)
-        self.process_json(data)
-
-    def process_json(self, data: List[dict]):
+    def from_json(self, data: List[dict]):
         """
         Load the AtomChip from a JSON data.
 
@@ -179,8 +186,8 @@ class AtomChip:
         # load the bias fields
         if "bias_fields" in data:
             bias_fields = data["bias_fields"]
-            self.bias_fields.from_dict(bias_fields)
+            self.bias_fields = BiasFields(**bias_fields)
 
         # Clear the analysis results
         self.field = None
-        self.trap = None
+        self.potential = None

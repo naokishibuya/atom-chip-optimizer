@@ -109,7 +109,7 @@ class FieldAnalysis:
 
 
 @dataclass
-class TrapAnalysis:
+class PotentialAnalysis:
     minimum: MinimumResult
     hessian: Optional[Hessian] = None
     trap: Optional[Frequency] = None
@@ -146,7 +146,7 @@ def analyze_field(
         print("Minimum {:.10g}G @ x={:.10g} mm, y={:.10g} mm, z={:.10g} mm".format(minimum.value, *minimum.position))
     else:
         print("Optimization failed:", minimum.message)
-        return TrapAnalysis(minimum)
+        return PotentialAnalysis(minimum)
 
     # Step 2: Hessian
     hessian = hessian_at_minimum(objective, minimum.position, **options.hessian)
@@ -182,7 +182,7 @@ def analyze_trap(
     atom: Atom,
     potential_function: Callable[[jnp.ndarray], float],
     options: AnalysisOptions,
-) -> TrapAnalysis:
+) -> PotentialAnalysis:
     """
     Finds the minimum of the trap potential, calculates relevant properties,
     and returns a TrapAnalysis object containing the results.
@@ -216,7 +216,7 @@ def analyze_trap(
         print("Minimum {:.10g}J @ x={:.10g} mm, y={:.10g} mm, z={:.10g} mm".format(minimum.value, *minimum.position))
     else:
         print("Optimization failed:", minimum.message)
-        return TrapAnalysis(minimum)
+        return PotentialAnalysis(minimum)
 
     # Step 2: Hessian
     hessian = hessian_at_minimum(objective, minimum.position, **options.hessian)
@@ -267,7 +267,7 @@ def analyze_trap(
         print("  mu (J):", tf_analysis.mu)
         print("  Radii (m):", tf_analysis.radii)
 
-    return TrapAnalysis(
+    return PotentialAnalysis(
         minimum=minimum,
         hessian=hessian,
         trap=trap,

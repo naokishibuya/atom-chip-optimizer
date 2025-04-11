@@ -18,7 +18,7 @@ def plot_potential_2d(
     cmap: Optional[str] = "jet",
     fig: Optional[plt.Figure] = None,
 ):
-    if not atom_chip.trap.minimum.found:
+    if not atom_chip.potential.minimum.found:
         print("Minimum not found. Cannot plot potential.")
         return
 
@@ -26,7 +26,7 @@ def plot_potential_2d(
     y_vals = np.linspace(*y_range)
     X, Y = np.meshgrid(x_vals, y_vals)
 
-    E_min = atom_chip.trap.minimum
+    E_min = atom_chip.potential.minimum
     if z is None:
         z = E_min.position[2]
     points = np.array([[x, y, z] for x, y in zip(X.flatten(), Y.flatten())])
