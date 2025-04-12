@@ -82,13 +82,13 @@ def format_summary(atom_chip: AtomChip) -> str:
 Trap Analysis
 
 Bias Field Parameters
------------------------------------------------------------------
+----------------------------------------------------------------------------
 Coil factors                [G/A] : {format_array(bias_found, bias.coil_factors)}
 Coil currents                 [A] : {format_array(bias_found, bias.currents)}
 Stray fields                  [G] : {format_array(bias_found, bias.stray_fields)}
 
 Magnetic Field Minimum
------------------------------------------------------------------
+----------------------------------------------------------------------------
 Field Minimum                 [G] : {format_value(fmin_found, field.minimum.value)}
 Minimum Location             [mm] : {format_array(fmin_found, field.minimum.position)}
 Larmor frequency            [MHz] : {format_value(fmin_found, field.larmor.frequency * 1e-6)}
@@ -99,7 +99,7 @@ Hessian Eigenvalues and Eigenvectors:
 {format_matrix(fmin_found, field.hessian.eigenvectors)}
 
 Trap Potential Minimum
------------------------------------------------------------------
+----------------------------------------------------------------------------
 Potential Minimum             [J] : {format_value(tmin_found, trap.minimum.value)}
 Minimum Location             [mm] : {format_array(tmin_found, trap.minimum.position)}
 Larmor frequency            [MHz] : {format_value(tmin_found, trap.larmor.frequency * 1e-6)}
@@ -110,7 +110,7 @@ Hessian Eigenvalues and Eigenvectors:
 {format_matrix(tmin_found, trap.hessian.eigenvectors)}
 
 BEC Parameters (Harmonic Oscillator Approximation)
------------------------------------------------------------------
+----------------------------------------------------------------------------
 HO Length a_ho               [μm] : {format_value(tmin_found, trap.bec.a_ho * 1e6)}
 Trap Frequency G-Avg w_ho [rad/s] : {format_value(tmin_found, trap.bec.w_ho)}
 
@@ -128,7 +128,7 @@ Harmonic Oscillator Radii    [μm] : {format_array(tmin_found, trap.tf.radii * 1
 def format_matrix(
     found: bool,
     matrix: jnp.ndarray,
-    precision: int = 2,
+    precision: int = 4,
 ) -> str:
     if not found or len(matrix) == 0:
         return "N/A"
@@ -147,7 +147,7 @@ def format_matrix(
 def format_array(
     found: bool,
     array: jnp.ndarray,
-    precision: int = 2,
+    precision: int = 4,
 ) -> str:
     if not found or len(array) == 0:
         return "N/A"
@@ -158,7 +158,7 @@ def format_array(
     )
 
 
-def format_value(found: bool, value: float, precision: int = 2) -> str:
+def format_value(found: bool, value: float, precision: int = 4) -> str:
     if not found:
         return "N/A"
     if abs(value) < 1e-3 or abs(value) >= 1e4:

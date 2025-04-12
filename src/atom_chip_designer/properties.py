@@ -5,7 +5,9 @@ This script defines properties and functions for managing them.
 # Note: bpy and mathutils are Blender's built-in modules (no need to install them).
 
 import bpy
+import bmesh
 import mathutils
+from mathutils import Vector
 
 
 # Shared enum items for material
@@ -54,6 +56,7 @@ class AtomChipPropertiesPanel(bpy.types.Panel):
             layout.label(text=f"Component ID: {obj.parent.component_id}")
             layout.label(text=f"Segment ID: {obj.parent.segment_id}")
             layout.label(text="Remarks: This indicates the current flow direction.")
+        layout.label(text="Dimensions set via object scale.")
 
 
 def add_rectangular_conductor(
@@ -61,18 +64,28 @@ def add_rectangular_conductor(
     segment_id: int,
     material: str,
     current: float,
-    location: mathutils.Vector,
-    scale: mathutils.Vector,  # (length, width, height)
-    direction: mathutils.Vector = mathutils.Vector((1, 0, 0)),
+    location: Vector,
+    scale: Vector,  # (length, width, height)
+    direction: Vector,
+    update_event: bool = True,
 ):
-    bpy.ops.mesh.primitive_cube_add(size=1)
-    obj = bpy.context.active_object
-    obj.name = f"Wire.{component_id:03d}_{segment_id:03d}"
+    mesh = bpy.data.meshes.new(name=f"WireMesh.{component_id:03d}_{segment_id:03d}")
+
+    # Create unit cube
+    bm = bmesh.new()
+    bmesh.ops.create_cube(bm, size=1.0)
+    bm.to_mesh(mesh)
+    bm.free()
+
+    # Create an object
+    obj = bpy.data.objects.new(f"Wire.{component_id:03d}_{segment_id:03d}", mesh)
     obj.location = location
-    obj.scale = scale  # Scale the cube in the x, y, z directions
+    obj.scale = scale
     obj.rotation_mode = "QUATERNION"
-    # Rotate the object at the origin to align with the direction (start to end)
-    obj.rotation_quaternion = mathutils.Vector((1, 0, 0)).rotation_difference(direction)
+    obj.rotation_quaternion = Vector((1, 0, 0)).rotation_difference(direction)
+
+    # Link object to the scene collection
+    bpy.context.collection.objects.link(obj)  # this causes minimal scene update
 
     # Add direction arrow (Do this before material and current are set to the object)
     add_current_markers(obj)
@@ -81,29 +94,42 @@ def add_rectangular_conductor(
     obj.segment_id = segment_id
     obj.material = material
     obj.current = current
+
+    if update_event:
+        # Causes update events
+        bpy.context.view_layer.update()
     return obj
 
 
 def add_current_markers(obj):
-    # Create marker1 (cube)
-    bpy.ops.mesh.primitive_cube_add(size=1)
-    marker1 = bpy.context.active_object
-    marker1.name = f"{obj.name}_current_marker_1"
-    marker1.location = (-0.475, 0, 0)  # Move it to the beginning of the conductor
-    marker1.scale = (0.05, 1.0, 1.01)
-    marker1.parent = obj
-    marker1.matrix_parent_inverse.identity()  # Don't inherit scale from parent
-    marker1.hide_select = True  # Hide from selection
+    """
+    Adds two cube-shaped markers to indicate current direction.
+    Safe to call from handlers (does not use bpy.ops which triggers scene update).
+    """
 
-    # Create marker2 (cube)
-    bpy.ops.mesh.primitive_cube_add(size=1)
-    marker2 = bpy.context.active_object
-    marker2.name = f"{obj.name}_current_marker_2"
-    marker2.location = (0.475, 0, 0)  # Move it to the end of the conductor
-    marker2.scale = (0.05, 1.0, 1.01)
-    marker2.parent = obj
-    marker2.matrix_parent_inverse.identity()  # Don't inherit scale from parent
-    marker2.hide_select = True  # Hide from selection
+    def create_marker(name_suffix, location):
+        # Create a new mesh and object
+        mesh = bpy.data.meshes.new(name=f"{obj.name}{name_suffix}_mesh")
+        marker = bpy.data.objects.new(name=f"{obj.name}{name_suffix}", object_data=mesh)
+
+        # Create cube geometry using bmesh
+        bm = bmesh.new()
+        bmesh.ops.create_cube(bm, size=1.0)
+        bm.to_mesh(mesh)
+        bm.free()
+
+        # Set transform and parent
+        marker.location = location
+        marker.scale = (0.05, 1.0, 1.01)
+        marker.parent = obj
+        marker.matrix_parent_inverse.identity()
+        marker.hide_select = True
+
+        # Add to current collection (only add them when their parent is active)
+        bpy.context.collection.objects.link(marker)
+
+    create_marker("_current_marker_1", location=(-0.475, 0, 0))
+    create_marker("_current_marker_2", location=(0.475, 0, 0))
 
 
 def update_material_color(obj):

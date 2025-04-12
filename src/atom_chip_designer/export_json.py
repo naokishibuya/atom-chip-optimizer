@@ -13,7 +13,7 @@ from bpy_extras.io_utils import ExportHelper
 
 def export_atom_chip_layout() -> list[dict]:
     wires = []
-    for obj in bpy.data.objects:
+    for obj in bpy.context.scene.objects:  # only objects in the current scene
         if obj.type != "MESH":
             continue
         if obj.parent:
@@ -22,8 +22,8 @@ def export_atom_chip_layout() -> list[dict]:
         # Compute start and end along local X axis
         start = obj.matrix_world @ mathutils.Vector((-0.5, 0, 0)) * 1e3  # m to mm
         end = obj.matrix_world @ mathutils.Vector((0.5, 0, 0)) * 1e3  # m to mm
-        width = obj.scale[1] * 1e3  # m to mm
-        height = obj.scale[2] * 1e3  # m to mm
+        width = obj.scale.y * 1e3  # m to mm
+        height = obj.scale.z * 1e3  # m to mm
 
         item = {
             "component_id": obj.component_id,

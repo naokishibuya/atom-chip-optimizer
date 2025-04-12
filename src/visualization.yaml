@@ -101,4 +101,4 @@ potential_3d_slider:
 summary_text:
   function: show_summary
   params:
-    size: [5, 6]
+    size: [5.5, 6]

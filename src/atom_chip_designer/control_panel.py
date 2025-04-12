@@ -7,10 +7,11 @@ This script adds a wire component in Blender.
 import requests
 import bpy
 from bpy.types import Operator, Panel
-from bpy.props import FloatProperty, EnumProperty
+from bpy.props import BoolProperty, FloatProperty, EnumProperty
 from mathutils import Vector
 from .export_json import export_atom_chip_layout
 from .properties import MATERIAL_ENUM_ITEMS, DEFAULT_MATERIAL, add_rectangular_conductor
+from .duplicate_handler import ComponentTracker
 
 
 # fmt: off
@@ -33,30 +34,52 @@ class AtomChipToolsPanel(Panel):
         layout = self.layout
         scene = context.scene
 
-        layout.label(text="Wires:")
-        layout.operator("object.add_atom_chip_wire", icon="MESH_CUBE")
-        layout.prop(scene, "show_atom_chip_markers")  # toggle visibility of markers
+        box = layout.box()
+        box.label(text="Wires", icon="OUTLINER_OB_MESH")
+        box.operator("object.add_atom_chip_wire", icon="MESH_CUBE")
+        box.prop(scene, "show_atom_chip_markers")  # toggle visibility of markers
 
-        layout.separator()
-        layout.label(text="Bias Fields:")
+        box = layout.box()
+        box.label(text="Bias Fields", icon="FORCE_MAGNETIC")
 
-        layout.label(text="Coil Factors [G/A]")
-        layout.prop(scene, "bias_coil_factors_x")
-        layout.prop(scene, "bias_coil_factors_y")
-        layout.prop(scene, "bias_coil_factors_z")
+        # Coil Factors row
+        row = box.row()
+        row.label(text="Coil Factors [G/A]")
+        row = box.row()
+        row.label(text="X")
+        row.label(text="Y")
+        row.label(text="Z")
+        row = box.row()
+        row.prop(scene, "bias_coil_factors_x", text="")
+        row.prop(scene, "bias_coil_factors_y", text="")
+        row.prop(scene, "bias_coil_factors_z", text="")
 
-        layout.label(text="Currents [A]")
-        layout.prop(scene, "bias_currents_x")
-        layout.prop(scene, "bias_currents_y")
-        layout.prop(scene, "bias_currents_z")
+        # Currents row
+        row = box.row()
+        row.label(text="Currents [A]")
+        row = box.row()
+        row.label(text="X")
+        row.label(text="Y")
+        row.label(text="Z")
+        row = box.row()
+        row.prop(scene, "bias_currents_x", text="")
+        row.prop(scene, "bias_currents_y", text="")
+        row.prop(scene, "bias_currents_z", text="")
 
-        layout.label(text="Stray Fields [G]")
-        layout.prop(scene, "bias_stray_fields_x")
-        layout.prop(scene, "bias_stray_fields_y")
-        layout.prop(scene, "bias_stray_fields_z")
+        # Stray Fields row
+        row = box.row()
+        row.label(text="Stray Fields [G]")
+        row = box.row()
+        row.label(text="X")
+        row.label(text="Y")
+        row.label(text="Z")
+        row = box.row()
+        row.prop(scene, "bias_stray_fields_x", text="")
+        row.prop(scene, "bias_stray_fields_y", text="")
+        row.prop(scene, "bias_stray_fields_z", text="")
 
-        layout.separator()
-        layout.operator("atom_chip.run_simulation", icon="PLAY")
+        row = box.row()
+        row.operator("atom_chip.run_simulation", icon="PLAY")
 
 
 class AtomChipWireAdder(Operator):
@@ -68,6 +91,7 @@ class AtomChipWireAdder(Operator):
 
     # === Properties to appear in the pop-up dialog ===
     # fmt: off
+    link_id : BoolProperty(name="Link to Selected Wire", default=False) # type: ignore[reportInvalidTypeForm]
     material: EnumProperty (name="Material", items=MATERIAL_ENUM_ITEMS) # type: ignore[reportInvalidTypeForm]
     current : FloatProperty(name="Current [A]")                         # type: ignore[reportInvalidTypeForm]
     center_x: FloatProperty(name="Center X", unit='LENGTH', step=STEP)  # type: ignore[reportInvalidTypeForm]
@@ -79,46 +103,60 @@ class AtomChipWireAdder(Operator):
     # fmt: on
 
     def execute(self, context):
-        selected = context.active_object
-        if selected and selected.get("component_id") is not None:
-            new_component_id = selected["component_id"]
-            ids = [obj.get("segment_id", -1) for obj in bpy.data.objects if obj.get("component_id") == new_component_id]
-            new_segment_id = max(ids + [-1]) + 1
-        else:
-            # Generate a new component ID
-            existing_ids = [obj.get("component_id", -1) for obj in bpy.data.objects]
-            new_component_id = max(existing_ids + [-1]) + 1
-            new_segment_id = 0
+        try:
+            ComponentTracker.pause()  # Pause component ID tracking
 
-        # add a unit cube and scale it
-        add_rectangular_conductor(
-            new_component_id,
-            new_segment_id,
-            self.material,
-            self.current,
-            (self.center_x, self.center_y, self.center_z),
-            (self.length, self.width, self.height),
-        )
+            selected = context.active_object
+            has_selected = selected and selected.get("component_id") is not None
+            if self.link_id and has_selected:
+                new_component_id = selected["component_id"]
+                ids = [
+                    obj.get("segment_id", -1) for obj in bpy.data.objects if obj.get("component_id") == new_component_id
+                ]
+                new_segment_id = max(ids + [-1]) + 1
+            else:
+                ids = [obj.get("component_id", -1) for obj in bpy.data.objects]
+                new_component_id = max(ids + [-1]) + 1
+                new_segment_id = 0
+
+            direction = selected.matrix_world.to_3x3() @ Vector((1, 0, 0)) if has_selected else Vector((1, 0, 0))
+
+            # add a new wire object
+            center = Vector((self.center_x, self.center_y, self.center_z))
+            scale = Vector((self.length, self.width, self.height))
+            new_wire = add_rectangular_conductor(
+                new_component_id,
+                new_segment_id,
+                self.material,
+                self.current,
+                center,
+                scale,
+                direction,
+            )
+            bpy.ops.object.select_all(action="DESELECT")
+            new_wire.select_set(True)
+            bpy.context.view_layer.objects.active = new_wire
+            bpy.ops.wm.tool_set_by_id(name="builtin.move")
+        except Exception as e:
+            self.report({"ERROR"}, f"Failed to add wire: {str(e)}")
+            return {"CANCELLED"}
+        finally:
+            ComponentTracker.resume()  # Update the component ID tracker
 
         return {"FINISHED"}
 
     def invoke(self, context, event):
         selected = context.active_object
         if selected and selected.get("component_id") is not None:
-            # Get the local Z direction in world space
-            z_axis_world = selected.matrix_world.to_3x3() @ Vector((0, 0, 1))
-            local_offset = z_axis_world.normalized() * selected.scale[2]
-            new_location = selected.location + local_offset
-
             # Get the existing wire location
-            self.center_x = new_location[0]
-            self.center_y = new_location[1]
-            self.center_z = new_location[2]
+            self.center_x = selected.location.x
+            self.center_y = selected.location.y
+            self.center_z = selected.location.z
 
-            # Get the existing wire scale
-            self.length = selected.scale[0]
-            self.width = selected.scale[1]
-            self.height = selected.scale[2]
+            # Get the existing wire geometry
+            self.length = selected.scale.x
+            self.width = selected.scale.y
+            self.height = selected.scale.z
 
             # Get the existing wire material and current
             self.material = getattr(selected, "material")  # as string
@@ -157,6 +195,8 @@ class RunSimulationOperator(bpy.types.Operator):
                 self.report({"INFO"}, "Simulation request sent!")
             else:
                 self.report({"ERROR"}, f"Simulation failed: {response.text}")
+        except requests.exceptions.Timeout:
+            self.report({"ERROR"}, "Simulation server timed out.")
         except Exception as e:
             self.report({"ERROR"}, f"Request failed: {str(e)}")
 

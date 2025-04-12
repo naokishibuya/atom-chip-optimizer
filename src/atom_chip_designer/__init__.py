@@ -10,10 +10,22 @@ bl_info = {
 
 # ruff: noqa: E402
 
-from . import properties, import_json, export_json, control_panel
+from . import (
+    properties,
+    duplicate_handler,
+    import_json,
+    export_json,
+    control_panel,
+)
 
 
-modules = (properties, import_json, export_json, control_panel)
+modules = (
+    properties,
+    duplicate_handler,
+    import_json,
+    export_json,
+    control_panel,
+)
 
 
 def register():

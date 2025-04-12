@@ -6,10 +6,11 @@ This script imports the layout (JSON) of an atom chip and visualizes it in Blend
 
 import json
 import bpy
-import mathutils
+from mathutils import Vector
 from bpy.types import Operator
 from bpy_extras.io_utils import ImportHelper
 from .properties import add_rectangular_conductor
+from .duplicate_handler import ComponentTracker
 
 
 class AtomChipImporter(Operator, ImportHelper):
@@ -30,52 +31,66 @@ class AtomChipImporter(Operator, ImportHelper):
         # Clear existing objects
         clear_atom_chip_objects()
 
-        wires = data["wires"]
-        for component in wires:
-            component_id = component["component_id"]
-            segment_id = component["segment_id"]
-            start = mathutils.Vector(component["start"]) * 1e-3  # from mm to m
-            end = mathutils.Vector(component["end"]) * 1e-3  # from mm to m
-            width = component["width"] * 1e-3  # from mm to m
-            height = component["height"] * 1e-3  # from mm to m
-            material = component["material"]
-            current = component["current"]
+        try:
+            # Pause component ID tracking
+            ComponentTracker.pause()
 
-            center = (start + end) / 2
-            direction = (end - start).normalized()
-            length = (end - start).length
+            wires = data["wires"]
+            for i, component in enumerate(wires):
+                component_id = component["component_id"]
+                segment_id = component["segment_id"]
+                start = Vector(component["start"]) * 1e-3  # from mm to m
+                end = Vector(component["end"]) * 1e-3  # from mm to m
+                width = component["width"] * 1e-3  # from mm to m
+                height = component["height"] * 1e-3  # from mm to m
+                material = component["material"]
+                current = component["current"]
 
-            # Sanity check: skip any broken geometry
-            if not (width > 0 and height > 0 and length > 0):
-                print(f"Skipping component {component_id} segment_id {segment_id} with non-positive size")
-                print(f"[{component_id}, {segment_id}] Start: {start}, End: {end}, Center: {center}, Length: {length}")
-                continue
+                center = (start + end) / 2
+                direction = (end - start).normalized()
+                length = (end - start).length
+                scale = Vector((length, width, height))
 
-            add_rectangular_conductor(
-                component_id,
-                segment_id,
-                material,
-                current,
-                center,
-                (length, width, height),
-                direction,
-            )
+                # Sanity check: skip any broken geometry
+                if not (width > 0 and height > 0 and length > 0):
+                    print(f"Skipping component {component_id} segment_id {segment_id} with non-positive size")
+                    print(
+                        f"[{component_id}, {segment_id}] Start: {start}, End: {end}, Center: {center}, Length: {length}"
+                    )
+                    continue
 
-        if "bias_fields" in data:
-            scene = bpy.context.scene
-            bias_fields = data["bias_fields"]
-            scene.bias_coil_factors_x = bias_fields["coil_factors"][0]
-            scene.bias_coil_factors_y = bias_fields["coil_factors"][1]
-            scene.bias_coil_factors_z = bias_fields["coil_factors"][2]
-            scene.bias_currents_x = bias_fields["currents"][0]
-            scene.bias_currents_y = bias_fields["currents"][1]
-            scene.bias_currents_z = bias_fields["currents"][2]
-            scene.bias_stray_fields_x = bias_fields["stray_fields"][0]
-            scene.bias_stray_fields_y = bias_fields["stray_fields"][1]
-            scene.bias_stray_fields_z = bias_fields["stray_fields"][2]
+                add_rectangular_conductor(
+                    component_id,
+                    segment_id,
+                    material,
+                    current,
+                    center,
+                    scale,
+                    direction,
+                    update_event=(i == len(wires) - 1),  # Trigger UI update after the last object is added
+                )
 
-        # Deselect all objects
-        bpy.ops.object.select_all(action="DESELECT")
+            if "bias_fields" in data:
+                scene = bpy.context.scene
+                bias_fields = data["bias_fields"]
+                scene.bias_coil_factors_x = bias_fields["coil_factors"][0]
+                scene.bias_coil_factors_y = bias_fields["coil_factors"][1]
+                scene.bias_coil_factors_z = bias_fields["coil_factors"][2]
+                scene.bias_currents_x = bias_fields["currents"][0]
+                scene.bias_currents_y = bias_fields["currents"][1]
+                scene.bias_currents_z = bias_fields["currents"][2]
+                scene.bias_stray_fields_x = bias_fields["stray_fields"][0]
+                scene.bias_stray_fields_y = bias_fields["stray_fields"][1]
+                scene.bias_stray_fields_z = bias_fields["stray_fields"][2]
+
+            # Deselect all objects
+            bpy.ops.object.select_all(action="DESELECT")
+        except Exception as e:
+            self.report({"ERROR"}, f"Failed to import layout: {str(e)}")
+            return {"CANCELLED"}
+        finally:
+            # Resume component ID tracking
+            ComponentTracker.resume()
 
         return {"FINISHED"}
 
