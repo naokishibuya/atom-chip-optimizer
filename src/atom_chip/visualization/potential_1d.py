@@ -23,11 +23,22 @@ def plot_potential_1d(
         return fig
 
     # Get the minimum energy point from the atom chip
-    x, y = atom_chip.potential.minimum.position[:2]
+    x, y, z = atom_chip.potential.minimum.position
     z_vals = np.linspace(*z_range)
 
     points = np.array([[x, y, z] for z in z_vals])
     E, B_mag, _ = atom_chip.get_potentials(points)
+    T = constants.joule_to_microKelvin(E)
+    min_T = constants.joule_to_microKelvin(atom_chip.potential.minimum.value)
+
+    # Check the energy around the minimum point
+    check_index = np.argmin(T)
+    check_start = max(0, check_index - 1)
+    check_end = min(len(z_vals), check_index + 1)
+    checK_z_vals = np.linspace(z_vals[check_start], z_vals[check_end], 100)
+    check_points = np.array([[x, y, z] for z in checK_z_vals])
+    check_E, _, _ = atom_chip.get_potentials(check_points)
+    check_T = constants.joule_to_microKelvin(check_E)
 
     # Magnetic field
     ax1.plot(z_vals, B_mag, "bo", markersize=1, label="|B| [G]")
@@ -36,10 +47,21 @@ def plot_potential_1d(
     ax1.tick_params(axis="y", labelcolor="b")
 
     # Energy overlay
-    T = constants.joule_to_microKelvin(E)
-
     ax2 = ax1.twinx()
     ax2.plot(z_vals, T, "ro", markersize=1, label="Energy [μK]")
+    if np.any(check_T < min_T) or np.any(T < min_T):
+        # plot text with a warning
+        text = f"z={z:.04f} is not the minimum!"
+        ax2.text(z + 0.1, min_T + 50, text, ha="left", va="center", fontsize=12, color="red")
+        ax2.hlines(
+            min_T,
+            z_range[0],
+            z_range[1],
+            color="r",
+            linestyle="-",
+            linewidth=1,
+            alpha=0.5,
+        )
     ax2.set_ylabel("Energy (μK)", color="r")
     ax2.tick_params(axis="y", labelcolor="r")
 
