@@ -1,16 +1,18 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Callable
 import jax
 import jax.numpy as jnp
 from jax.tree_util import register_dataclass
 
 
+# fmt: off
 @register_dataclass
 @dataclass
 class Hessian:
-    eigenvalues: jnp.ndarray
-    eigenvectors: jnp.ndarray
-    matrix: jnp.ndarray
+    eigenvalues : jnp.ndarray = field(default_factory=lambda: jnp.array([]))
+    eigenvectors: jnp.ndarray = field(default_factory=lambda: jnp.array([]))
+    matrix      : jnp.ndarray = field(default_factory=lambda: jnp.array([]))
+# fmt: on
 
 
 # This is not jax-jit compatible

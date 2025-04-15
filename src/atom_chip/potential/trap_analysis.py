@@ -23,8 +23,8 @@ Notes:
 - Use Part 3 for large condensed atom numbers (interaction-dominated regime)
 """
 
-from dataclasses import dataclass
-from typing import Callable, Optional
+from dataclasses import dataclass, field
+from typing import Callable
 import jax
 import jax.numpy as jnp
 from jax.tree_util import register_dataclass
@@ -34,11 +34,13 @@ from .minimum import search_minimum, MinimumResult
 from .hessian import hessian_at_minimum, Hessian
 
 
+# fmt: off
 @register_dataclass
 @dataclass
 class Frequency:
-    frequency: jnp.ndarray  # [Hz]
-    angular: jnp.ndarray  # [rad/s]
+    frequency: jnp.ndarray = field(default_factory=lambda: jnp.nan)  # [Hz]
+    angular  : jnp.ndarray = field(default_factory=lambda: jnp.nan)  # [rad/s]
+# fmt: on
 
 
 # Non-interacting BEC properties based on quantum harmonic oscillator model (ideal gas)
@@ -55,12 +57,12 @@ class Frequency:
 @register_dataclass
 @dataclass
 class BECAnalysis:
-    total_atoms: int          # Total number of atoms in the trap
-    a_ho       : float        # Geometric mean of a_ho (average H.O. length) [m]
-    w_ho       : float        # Geometric mean trap frequency (angular) [rad/s]
-    mu_0       : float        # Chemical potential in the non-interacting limit [J]
-    radii      : jnp.ndarray  # Harmonic oscillator length in each direction [m]
-    T_c        : float        # Critical temperature [K]
+    total_atoms: int         = field(default_factory=lambda: 0)        # Total number of atoms in the trap
+    a_ho       : float       = field(default_factory=lambda: jnp.nan)  # H.O. length [m]
+    w_ho       : float       = field(default_factory=lambda: jnp.nan)  # Geometric mean trap frequency (angular) [rad/s]
+    mu_0       : float       = field(default_factory=lambda: jnp.nan)  # Ground level chemical potential limit [J]
+    radii      : jnp.ndarray = field(default_factory=lambda: None)     # Harmonic oscillator length [m]
+    T_c        : float       = field(default_factory=lambda: jnp.nan)  # Critical temperature [K]
 # fmt: on
 
 
@@ -78,10 +80,10 @@ class BECAnalysis:
 # fmt: off
 @register_dataclass
 @dataclass
-class ThomasFermiAnalysis:
-    condensed_atoms: int          # Number of condensed atoms in the trap
-    mu             : float        # Thomas-Fermi chemical potential [J]
-    radii          : jnp.ndarray  # Thomas-Fermi radii in each direction [m]
+class TFAnalysis:
+    condensed_atoms: int         = field(default_factory=lambda: 0)       # Number of condensed atoms in the trap
+    mu             : float       = field(default_factory=lambda: jnp.nan) # Thomas-Fermi chemical potential [J]
+    radii          : jnp.ndarray = field(default_factory=lambda: None)    # Thomas-Fermi radii in each direction [m]
 # fmt: on
 
 
@@ -100,22 +102,26 @@ class AnalysisOptions:
             raise ValueError("Total atoms must be greater than condensed atoms.")
 
 
+# fmt: off
 @dataclass
 class FieldAnalysis:
     minimum: MinimumResult
-    hessian: Optional[Hessian] = None
-    trap: Optional[Frequency] = None
-    larmor: Optional[Frequency] = None
+    hessian: Hessian   = field(default_factory=lambda: Hessian())
+    trap   : Frequency = field(default_factory=lambda: Frequency())
+    larmor : Frequency = field(default_factory=lambda: Frequency())
+# fmt: on
 
 
+# fmt: off
 @dataclass
 class PotentialAnalysis:
     minimum: MinimumResult
-    hessian: Optional[Hessian] = None
-    trap: Optional[Frequency] = None
-    larmor: Optional[Frequency] = None
-    bec: Optional[BECAnalysis] = None
-    tf: Optional[ThomasFermiAnalysis] = None
+    hessian: Hessian     = field(default_factory=lambda: Hessian())
+    trap   : Frequency   = field(default_factory=lambda: Frequency())
+    larmor : Frequency   = field(default_factory=lambda: Frequency())
+    bec    : BECAnalysis = field(default_factory=lambda: BECAnalysis())
+    tf     : TFAnalysis  = field(default_factory=lambda: TFAnalysis())
+# fmt: on
 
 
 # === Field Analysis is done mostly for debugging purposes ===
@@ -348,7 +354,7 @@ def analyze_bec_thomas_fermi(
     atom: Atom,
     trap_frequency: Frequency,
     condensed_atoms: int,
-) -> ThomasFermiAnalysis:
+) -> TFAnalysis:
     """
     Analyzes the Thomas-Fermi BEC properties based on the mean-field limit.
     Assumes large condensed atom number and strong interactions.
@@ -366,7 +372,7 @@ def analyze_bec_thomas_fermi(
     a_ho = jnp.sqrt(constants.hbar / (atom.mass * w_ho))
     mu = 0.5 * constants.hbar * w_ho * (15 * atom.a_s * condensed_atoms / a_ho) ** (2 / 5)
     radii = jnp.sqrt(2 * mu / atom.mass) / omega
-    return ThomasFermiAnalysis(
+    return TFAnalysis(
         condensed_atoms=condensed_atoms,
         mu=mu,
         radii=radii,
