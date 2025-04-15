@@ -91,7 +91,7 @@ Magnetic Field Minimum
 ----------------------------------------------------------------------------
 Field Minimum                 [G] : {format_value(fmin_found, field.minimum.value)}
 Minimum Location             [mm] : {format_array(fmin_found, field.minimum.position)}
-Larmor frequency            [MHz] : {format_value(fmin_found, field.larmor.frequency, 1e-6)}
+Larmor frequency            [MHz] : {format_value(fmin_found, field.larmor.frequency, unit=1e-6)}
 Trap frequencies             [Hz] : {format_array(fmin_found, field.trap.frequency)}
 
 Hessian Eigenvalues and Eigenvectors:
@@ -102,7 +102,7 @@ Trap Potential Minimum
 ----------------------------------------------------------------------------
 Potential Minimum             [J] : {format_value(tmin_found, potential.minimum.value)}
 Minimum Location             [mm] : {format_array(tmin_found, potential.minimum.position)}
-Larmor frequency            [MHz] : {format_value(tmin_found, potential.larmor.frequency, 1e-6)}
+Larmor frequency            [MHz] : {format_value(tmin_found, potential.larmor.frequency, unit=1e-6)}
 Trap frequencies             [Hz] : {format_array(tmin_found, potential.trap.frequency)}
 
 Hessian Eigenvalues and Eigenvectors:
@@ -111,17 +111,17 @@ Hessian Eigenvalues and Eigenvectors:
 
 BEC Parameters (Harmonic Oscillator Approximation)
 ----------------------------------------------------------------------------
-HO Length a_ho               [μm] : {format_value(tmin_found, potential.bec.a_ho, 1e6)}
+HO Length a_ho               [μm] : {format_value(tmin_found, potential.bec.a_ho, unit=1e6)}
 Trap Frequency G-Avg w_ho [rad/s] : {format_value(tmin_found, potential.bec.w_ho)}
 
 Non-interacting           [atoms] : {format_count(tmin_found, potential.bec.total_atoms)}
 Chemical Potential μ0         [J] : {format_value(tmin_found, potential.bec.mu_0)}
-Harmonic Oscillator Radii    [μm] : {format_array(tmin_found, potential.bec.radii, 1e6)}
-Critical Temperature         [nK] : {format_value(tmin_found, potential.bec.T_c * 1e9)}
+Harmonic Oscillator Radii    [μm] : {format_array(tmin_found, potential.bec.radii, unit=1e6)}
+Critical Temperature         [nK] : {format_value(tmin_found, potential.bec.T_c, unit=1e9)}
 
 Thomas-Fermi              [atoms] : {format_count(tmin_found, potential.tf.condensed_atoms)}
 Chemical Potenential μ        [J] : {format_value(tmin_found, potential.tf.mu)}
-Harmonic Oscillator Radii    [μm] : {format_array(tmin_found, potential.tf.radii, 1e6)}
+Harmonic Oscillator Radii    [μm] : {format_array(tmin_found, potential.tf.radii, unit=1e6)}
 """
 
 
