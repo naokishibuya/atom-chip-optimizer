@@ -16,20 +16,20 @@ def plot_potential_3d(
     z: Optional[float] = None,
     zlim: Optional[Tuple[float, float]] = None,
     fig: Optional[plt.Figure] = None,
-):
-    if not atom_chip.potential.minimum.found:
-        print("Minimum not found. Cannot plot potential.")
-        return
-
-    x_vals = np.linspace(*x_range)
-    y_vals = np.linspace(*y_range)
-    X, Y = np.meshgrid(x_vals, y_vals)
-
+) -> plt.Figure:
     if fig is None:
         fig = plt.figure(figsize=size)
     else:
         fig.clear()
     ax = fig.add_subplot(111, projection="3d")
+
+    if not atom_chip.potential.minimum.found:
+        fig.text(0.5, 0.5, "Potential Minimum not found.", ha="center", va="center", fontsize=12)
+        return fig
+
+    x_vals = np.linspace(*x_range)
+    y_vals = np.linspace(*y_range)
+    X, Y = np.meshgrid(x_vals, y_vals)
 
     if z_range:
         z_vals = np.linspace(z_range[0], z_range[1], z_range[2] + 1)

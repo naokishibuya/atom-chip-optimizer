@@ -73,10 +73,10 @@ def format_summary(atom_chip: AtomChip) -> str:
     # fmt: off
     bias       = atom_chip.bias_fields
     field      = atom_chip.field
-    trap       = atom_chip.potential
+    potential  = atom_chip.potential
     bias_found = bias is not None
     fmin_found = field.minimum.found
-    tmin_found = trap.minimum.found
+    tmin_found = potential.minimum.found
     # fmt: on
     return f"""
 Trap Analysis
@@ -91,7 +91,7 @@ Magnetic Field Minimum
 ----------------------------------------------------------------------------
 Field Minimum                 [G] : {format_value(fmin_found, field.minimum.value)}
 Minimum Location             [mm] : {format_array(fmin_found, field.minimum.position)}
-Larmor frequency            [MHz] : {format_value(fmin_found, field.larmor.frequency * 1e-6)}
+Larmor frequency            [MHz] : {format_value(fmin_found, field.larmor.frequency, 1e-6)}
 Trap frequencies             [Hz] : {format_array(fmin_found, field.trap.frequency)}
 
 Hessian Eigenvalues and Eigenvectors:
@@ -100,28 +100,28 @@ Hessian Eigenvalues and Eigenvectors:
 
 Trap Potential Minimum
 ----------------------------------------------------------------------------
-Potential Minimum             [J] : {format_value(tmin_found, trap.minimum.value)}
-Minimum Location             [mm] : {format_array(tmin_found, trap.minimum.position)}
-Larmor frequency            [MHz] : {format_value(tmin_found, trap.larmor.frequency * 1e-6)}
-Trap frequencies             [Hz] : {format_array(tmin_found, trap.trap.frequency)}
+Potential Minimum             [J] : {format_value(tmin_found, potential.minimum.value)}
+Minimum Location             [mm] : {format_array(tmin_found, potential.minimum.position)}
+Larmor frequency            [MHz] : {format_value(tmin_found, potential.larmor.frequency, 1e-6)}
+Trap frequencies             [Hz] : {format_array(tmin_found, potential.trap.frequency)}
 
 Hessian Eigenvalues and Eigenvectors:
-{format_array(tmin_found, trap.hessian.eigenvalues)}
-{format_matrix(tmin_found, trap.hessian.eigenvectors)}
+{format_array(tmin_found, potential.hessian.eigenvalues)}
+{format_matrix(tmin_found, potential.hessian.eigenvectors)}
 
 BEC Parameters (Harmonic Oscillator Approximation)
 ----------------------------------------------------------------------------
-HO Length a_ho               [μm] : {format_value(tmin_found, trap.bec.a_ho * 1e6)}
-Trap Frequency G-Avg w_ho [rad/s] : {format_value(tmin_found, trap.bec.w_ho)}
+HO Length a_ho               [μm] : {format_value(tmin_found, potential.bec.a_ho, 1e6)}
+Trap Frequency G-Avg w_ho [rad/s] : {format_value(tmin_found, potential.bec.w_ho)}
 
-Non-interacting           [atoms] : {format_count(tmin_found, trap.bec.total_atoms)}
-Chemical Potential μ0         [J] : {format_value(tmin_found, trap.bec.mu_0)}
-Harmonic Oscillator Radii    [μm] : {format_array(tmin_found, trap.bec.radii * 1e6)}
-Critical Temperature         [nK] : {format_value(tmin_found, trap.bec.T_c * 1e9)}
+Non-interacting           [atoms] : {format_count(tmin_found, potential.bec.total_atoms)}
+Chemical Potential μ0         [J] : {format_value(tmin_found, potential.bec.mu_0)}
+Harmonic Oscillator Radii    [μm] : {format_array(tmin_found, potential.bec.radii, 1e6)}
+Critical Temperature         [nK] : {format_value(tmin_found, potential.bec.T_c * 1e9)}
 
-Thomas-Fermi              [atoms] : {format_count(tmin_found, trap.tf.condensed_atoms)}
-Chemical Potenential μ        [J] : {format_value(tmin_found, trap.tf.mu)}
-Harmonic Oscillator Radii    [μm] : {format_array(tmin_found, trap.tf.radii * 1e6)}
+Thomas-Fermi              [atoms] : {format_count(tmin_found, potential.tf.condensed_atoms)}
+Chemical Potenential μ        [J] : {format_value(tmin_found, potential.tf.mu)}
+Harmonic Oscillator Radii    [μm] : {format_array(tmin_found, potential.tf.radii, 1e6)}
 """
 
 
@@ -129,9 +129,12 @@ def format_matrix(
     found: bool,
     matrix: jnp.ndarray,
     precision: int = 4,
+    unit: float = 1.0,
 ) -> str:
     if not found or len(matrix) == 0:
         return "N/A"
+    if unit != 1.0:
+        matrix = matrix * unit
     return "\n".join(
         format_array(
             found,
@@ -148,9 +151,12 @@ def format_array(
     found: bool,
     array: jnp.ndarray,
     precision: int = 4,
+    unit: float = 1.0,
 ) -> str:
     if not found or len(array) == 0:
         return "N/A"
+    if unit != 1.0:
+        array = array * unit
     return np.array2string(
         np.array(array),
         formatter={"float_kind": lambda x: f"{x: {precision + 6}.{precision}f}"},
@@ -158,9 +164,11 @@ def format_array(
     )
 
 
-def format_value(found: bool, value: float, precision: int = 4) -> str:
+def format_value(found: bool, value: float, precision: int = 4, unit: float = 1.0) -> str:
     if not found:
         return "N/A"
+    if unit != 1.0:
+        value = value * unit
     if abs(value) < 1e-3 or abs(value) >= 1e4:
         return f"{value:.{precision}e}"
     else:

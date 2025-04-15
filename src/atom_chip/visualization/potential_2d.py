@@ -17,10 +17,17 @@ def plot_potential_2d(
     quiver: Optional[bool] = False,
     cmap: Optional[str] = "jet",
     fig: Optional[plt.Figure] = None,
-):
+) -> plt.Figure:
+    # create figure
+    if fig is None:
+        fig = plt.figure(figsize=size)
+    else:
+        fig.clear()
+    ax = fig.add_subplot(111)
+
     if not atom_chip.potential.minimum.found:
-        print("Minimum not found. Cannot plot potential.")
-        return
+        fig.text(0.5, 0.5, "Potential Minimum not found.", ha="center", va="center", fontsize=12)
+        return fig
 
     x_vals = np.linspace(*x_range)
     y_vals = np.linspace(*y_range)
@@ -35,12 +42,6 @@ def plot_potential_2d(
     E = E.reshape(X.shape)
     T = constants.joule_to_microKelvin(E)
 
-    # create figure
-    if fig is None:
-        fig = plt.figure(figsize=size)
-    else:
-        fig.clear()
-    ax = fig.add_subplot(111)
     img = ax.imshow(
         T,
         extent=(x_range[0], x_range[1], y_range[0], y_range[1]),

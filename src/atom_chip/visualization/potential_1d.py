@@ -10,10 +10,17 @@ def plot_potential_1d(
     size: Tuple[int, int],
     z_range: Tuple[float, float, int],
     fig: Optional[plt.Figure] = None,
-):
+) -> plt.Figure:
+    if fig is None:
+        fig = plt.figure(figsize=size)
+    else:
+        fig.clear()
+    ax1 = fig.add_subplot(111)
+    fig.gca().grid()
+
     if not atom_chip.potential.minimum.found:
-        print("Minimum not found. Cannot plot potential.")
-        return
+        fig.text(0.5, 0.5, "Potential Minimum not found.", ha="center", va="center", fontsize=12)
+        return fig
 
     # Get the minimum energy point from the atom chip
     x, y = atom_chip.potential.minimum.position[:2]
@@ -21,13 +28,6 @@ def plot_potential_1d(
 
     points = np.array([[x, y, z] for z in z_vals])
     E, B_mag, _ = atom_chip.get_potentials(points)
-
-    if fig is None:
-        fig = plt.figure(figsize=size)
-    else:
-        fig.clear()
-    ax1 = fig.add_subplot(111)
-    fig.gca().grid()
 
     # Magnetic field
     ax1.plot(z_vals, B_mag, "bo", markersize=1, label="|B| [G]")

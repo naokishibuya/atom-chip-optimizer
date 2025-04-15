@@ -18,7 +18,7 @@ def plot_layout_3d(
     zlim: Optional[Tuple[float, float]] = None,
     tick: Optional[Union[float, List[float]]] = None,
     fig: Optional[plt.Figure] = None,
-):
+) -> plt.Figure:
     if fig is None:
         fig = plt.figure(figsize=size)
     else:
