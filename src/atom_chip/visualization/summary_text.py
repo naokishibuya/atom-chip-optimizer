@@ -159,7 +159,7 @@ def format_array(
         array = array * unit
     return np.array2string(
         np.array(array),
-        formatter={"float_kind": lambda x: f"{x: {precision + 6}.{precision}f}"},
+        formatter={"float_kind": lambda x: f"{x: {precision + 6}.{precision}g}"},
         separator=" ",
     )
 
