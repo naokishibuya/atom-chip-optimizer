@@ -1,79 +1,47 @@
-# TODO: rework this to perform other optimizations
-# def search_minimum_potential(
-#     func,
-#     initial_guess,
-#     max_iterations=int(1e5),
-#     learning_rate=1e-2,
-#     tolerance=1e-6,
-# ) -> PotentialMinimum:
-#     """
-#     Perform gradient descent to find the minimum of a function.
+from dataclasses import dataclass
+from typing import Callable
+from scipy.optimize import minimize, NonlinearConstraint
+import jax.numpy as jnp
 
-#     Args:
-#         func: The function to minimize. It should take a single argument (the parameters) and return a scalar value.
-#         initial_guess: Initial guess for the minimum point.
-#         max_iterations: Number of iterations to perform.
-#         learning_rate: Learning rate for gradient descent.
-#         tolerance: Tolerance for convergence.
 
-#     Returns:
-#         The parameters that minimize the function and the minimum value of the function.
-#     """
+@dataclass
+class OptimizerResult:
+    success: bool
+    value: float
+    params: jnp.ndarray
+    message: str
 
-#     def objective_function(point):
-#         value = func(point)[0]
-#         return value[0]
 
-#     optres = minimize(
-#         objective_function,
-#         x0=initial_guess.flatten(),
-#         method="Nelder-Mead",
-#         options={"xatol": 1e-10, "fatol": 1e-10, "maxiter": 10000, "maxfev": 10000, "disp": True},
-#         tol=1e-6,
-#     )
-#     if optres.success:
-#         initial_guess = jnp.array(optres.x).reshape(initial_guess.shape)
+def optimize(
+    objective: Callable,
+    constraints: list,
+    lower_bounds: jnp.ndarray,
+    upper_bounds: jnp.ndarray,
+    params: jnp.ndarray,
+    callback: Callable = None,
+):
+    nlc = NonlinearConstraint(
+        fun=constraints,
+        lb=lower_bounds,
+        ub=upper_bounds,
+    )
 
-#     # Initialize the optimizer
-#     lr_schedule = optax.exponential_decay(
-#         init_value=learning_rate,
-#         transition_steps=1000,
-#         decay_rate=0.99,
-#     )
-#     optimizer = optax.sgd(learning_rate=lr_schedule)
-#     opt_state = optimizer.init(initial_guess)
-#     params = initial_guess
+    result = minimize(
+        fun=objective,
+        x0=params,
+        method="trust-constr",
+        constraints=[nlc],
+        callback=callback,
+        options={"verbose": 3, "gtol": 1e-4},
+    )
 
-#     found = False
-#     for i in range(max_iterations):
-#         # Compute the gradients
-#         grads = jax.grad(objective_function)(params)
+    if not result.success:
+        print("Optimization failed.")
+        print(result.message)
 
-#         # Update the parameters
-#         updates, opt_state = optimizer.update(grads, opt_state, params)
-#         params = optax.apply_updates(params, updates)
-
-#         # Check for convergence
-#         if jnp.linalg.norm(grads) < tolerance:
-#             found = True
-#             break
-
-#     # hessian_func = jax.hessian(objective_function)
-#     # hessian_matrix = hessian_func(params)[0]
-#     # print(hessian_matrix.shape)
-#     # eigenvalues, eigvectors = jnp.linalg.eig(hessian_matrix)
-
-#     result = PotentialMinimum(
-#         found=found,
-#         value=objective_function(params),
-#         point=params[0],
-#         grads=grads[0],
-#         hessian=None,
-#         # hessian=Hessian(
-#         #     eigenvalues=eigenvalues,
-#         #     eigenvectors=eigvectors,
-#         #     matrix=hessian_matrix,
-#         # ),
-#     )
-
-#     return result
+    return OptimizerResult(
+        success=result.success,
+        value=result.fun,
+        params=result.x,
+        message=result.message,
+    )

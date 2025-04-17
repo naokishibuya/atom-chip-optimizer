@@ -25,14 +25,12 @@ layout_3d:
 layout_3d_surface:
   function: plot_layout_3d
   params:
-    title: Atom Chip Layout (Surface Only)
+    title: Atom Chip Layout (Surface)
     size: [5, 6]
     compute_zorder: false
     azim: -140  # Azimuth angle
     elev: 80    # Elevation angle
-    xlim: [-50, 50]
-    ylim: [-20, 20]
-    zlim: [-15, 15]
+    zlim: [-3, 15]
     tick: [20, 20, 20]
 
 potential_1d:

@@ -34,7 +34,7 @@ def plot_potential_1d(
     # Check the energy around the minimum point
     check_index = np.argmin(T)
     check_start = max(0, check_index - 1)
-    check_end = min(len(z_vals), check_index + 1)
+    check_end = min(len(z_vals) - 1, check_index + 1)
     checK_z_vals = np.linspace(z_vals[check_start], z_vals[check_end], 100)
     check_points = np.array([[x, y, z] for z in checK_z_vals])
     check_E, _, _ = atom_chip.get_potentials(check_points)

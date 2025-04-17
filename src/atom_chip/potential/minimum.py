@@ -31,11 +31,11 @@ def search_minimum(objective: Callable[[jnp.ndarray], float], **kwargs: dict) ->
     """
 
     # perform the minimization
-    optres = minimize(objective, **kwargs)
+    result = minimize(objective, **kwargs)
 
     return MinimumResult(
-        found=optres.success,
-        value=optres.fun,
-        position=optres.x,
-        message=optres.message,
+        found=result.success,
+        value=result.fun,
+        position=result.x,
+        message=result.message,
     )

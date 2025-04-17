@@ -6,6 +6,7 @@ pandas==2.2.3
 jax==0.5.3
 optax==0.2.4
 # visualization
+jupyter==1.1.1
 matplotlib==3.10.1
 PyQt5==5.15.11
 PyYAML==6.0.2

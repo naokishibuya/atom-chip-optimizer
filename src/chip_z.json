@@ -1,0 +1,75 @@
+{
+  "wires": [
+    {
+      "component_id": 0,
+      "segment_id": 0,
+      "material": "copper",
+      "current": 1.0,
+      "start": [
+        -4.834517755588983,
+        -30.15,
+        0.485
+      ],
+      "end": [
+        -4.834517755588983,
+        -0.15,
+        0.485
+      ],
+      "width": 0.3,
+      "height": 0.07
+    },
+    {
+      "component_id": 0,
+      "segment_id": 1,
+      "material": "copper",
+      "current": 1.0,
+      "start": [
+        -4.984517755588984,
+        0.0,
+        0.485
+      ],
+      "end": [
+        4.984517755588984,
+        0.0,
+        0.485
+      ],
+      "width": 0.3,
+      "height": 0.07
+    },
+    {
+      "component_id": 0,
+      "segment_id": 2,
+      "material": "copper",
+      "current": 1.0,
+      "start": [
+        4.834517755588983,
+        0.15,
+        0.485
+      ],
+      "end": [
+        4.834517755588983,
+        30.15,
+        0.485
+      ],
+      "width": 0.3,
+      "height": 0.07
+    }
+  ],
+  "bias_fields": {
+    "coil_factors": [
+      -1.068,
+      1.8,
+      3.0
+    ],
+    "currents": [
+      0.0,
+      0.0,
+      0.0
+    ],
+    "stray_fields": [
+      5.496473036145453,
+      5.0,
+      0.0
+    ]
+  }
+}
