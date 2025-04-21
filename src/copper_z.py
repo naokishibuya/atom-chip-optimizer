@@ -1,4 +1,5 @@
 import os
+import logging
 from typing import Tuple
 import atom_chip as ac
 
@@ -136,9 +137,11 @@ def main():
         # for the trap analayis (not used for field analysis)
         total_atoms=1e5,
         condensed_atoms=1e5,
-        verbose = True,
     )
     # fmt: on
+
+    # Set up logging
+    logging.basicConfig(level=logging.INFO)
 
     # Build the atom chip
     atom_chip = build_atom_chip()

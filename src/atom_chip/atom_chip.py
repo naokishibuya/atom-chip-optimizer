@@ -1,4 +1,5 @@
 from typing import List
+import logging
 import pandas as pd
 import json
 import time
@@ -88,12 +89,12 @@ class AtomChip:
         Returns:
             TrapAnalysis: Result of the trap potential analysis.
         """
-        print(f"Bias fields: {self.bias_fields.to_dict()}")
+        logging.info(f"Bias fields: {self.bias_fields.to_dict()}")
         start_time = time.time()
         self.field = analyze_field(self.atom, self.get_fields, options)
         self.potential = analyze_trap(self.atom, self.get_potentials, options)
         end_time = time.time()
-        print(f"Analysis completed in {end_time - start_time:.2f} seconds")
+        logging.info(f"Analysis completed in {end_time - start_time:.2f} seconds")
         return self.potential
 
     def save(self, path: str) -> str:

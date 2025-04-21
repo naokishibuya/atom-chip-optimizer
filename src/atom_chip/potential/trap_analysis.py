@@ -23,6 +23,7 @@ Notes:
 - Use Part 3 for large condensed atom numbers (interaction-dominated regime)
 """
 
+import logging
 from dataclasses import dataclass, field
 from typing import Callable
 import jax
@@ -32,6 +33,10 @@ from . import constants
 from .atom import Atom
 from .minimum import search_minimum, MinimumResult
 from .hessian import hessian_at_minimum, Hessian
+
+
+logging.basicConfig(level=logging.INFO, format="")
+logger = logging.getLogger(__name__)
 
 
 # fmt: off
@@ -93,7 +98,6 @@ class AnalysisOptions:
     hessian: dict
     total_atoms: int = 1e5
     condensed_atoms: int = 1e3
-    verbose: bool = False
 
     def __post_init__(self):
         if self.condensed_atoms < 0:
@@ -136,8 +140,8 @@ def analyze_field(
     This analyzes the magnetic field and related characteristics.
     """
 
-    print("-" * 100)
-    print("Analyzing magnetic field [G] ...")
+    logger.info("-" * 100)
+    logger.info("Analyzing magnetic field [G] ...")
 
     # Define the objective function for the field analysis
     def objective(point: jnp.array) -> float:
@@ -145,33 +149,31 @@ def analyze_field(
         return B_mag[0]
 
     # search for the minimum
-    if options.verbose:
-        print(options.search)
+    logger.info(options.search)
     minimum = search_minimum(objective, **options.search)
     if minimum.found:
-        print("Minimum {:.10g}G @ x={:.10g} mm, y={:.10g} mm, z={:.10g} mm".format(minimum.value, *minimum.position))
+        logger.info(
+            "Minimum {:.10g}G @ x={:.10g} mm, y={:.10g} mm, z={:.10g} mm".format(minimum.value, *minimum.position)
+        )
     else:
-        print("Optimization failed:", minimum.message)
+        logger.info(f"Optimization failed: {minimum.message}")
         return PotentialAnalysis(minimum)
 
     # Step 2: Hessian
     hessian = hessian_at_minimum(objective, minimum.position, **options.hessian)
-    if options.verbose:
-        print(f"Hessian by {options.hessian}")
-        print(hessian.eigenvalues)
-        print(hessian.eigenvectors)
-        # print(hessian.matrix)
+    logger.info(f"Hessian by {options.hessian}")
+    logger.info(hessian.eigenvalues)
+    logger.info(hessian.eigenvectors)
+    logger.debug(hessian.matrix)
 
     # Step 3: Trap Frequencies (1e-4 for conversion from G to T)
     eigenvalues = atom.mu * hessian.eigenvalues * 1e-4  # don't modify the hessian matrix!
     trap = trap_frequencies(eigenvalues, atom.mass)
-    if options.verbose:
-        print("Trap frequencies (Hz):", trap.frequency)
+    logger.info(f"Trap frequencies (Hz) : {trap.frequency}")
 
     # Step 4: Larmor Frequency
     larmor = larmor_frequency(atom, minimum.value)
-    if options.verbose:
-        print("Larmor frequency (MHz):", larmor.frequency * 1e-6)
+    logger.info(f"Larmor frequency (MHz): {larmor.frequency * 1e-6}")
 
     return FieldAnalysis(
         minimum=minimum,
@@ -206,8 +208,8 @@ def analyze_trap(
     # Part 1: Trap Characterization
     # ----------------------------------------------------------------------
 
-    print("-" * 100)
-    print("Analyzing trap potential [J] ...")
+    logger.info("-" * 100)
+    logger.info("Analyzing trap potential [J] ...")
 
     # Define the objective function for the trap analysis
     def objective(point: jnp.array) -> float:
@@ -215,34 +217,32 @@ def analyze_trap(
         return E[0]
 
     # Step 1: Potential Minimum
-    if options.verbose:
-        print(options.search)
+    logger.info(options.search)
     minimum = search_minimum(objective, **options.search)
     if minimum.found:
-        print("Minimum {:.10g}J @ x={:.10g} mm, y={:.10g} mm, z={:.10g} mm".format(minimum.value, *minimum.position))
+        logger.info(
+            "Minimum {:.10g}J @ x={:.10g} mm, y={:.10g} mm, z={:.10g} mm".format(minimum.value, *minimum.position)
+        )
     else:
-        print("Optimization failed:", minimum.message)
+        logger.info(f"Optimization failed: {minimum.message}")
         return PotentialAnalysis(minimum)
 
     # Step 2: Hessian
     hessian = hessian_at_minimum(objective, minimum.position, **options.hessian)
-    if options.verbose:
-        print(f"Hessian by {options.hessian}")
-        print(hessian.eigenvalues)
-        print(hessian.eigenvectors)
-        # print(hessian.matrix)
+    logger.info(f"Hessian by {options.hessian}")
+    logger.info(hessian.eigenvalues)
+    logger.info(hessian.eigenvectors)
+    logger.debug(hessian.matrix)
 
     # Step 3: Trap Frequencies
     trap = trap_frequencies(hessian.eigenvalues, atom.mass)
-    if options.verbose:
-        print("Trap frequencies (Hz):", trap.frequency)
+    logger.info(f"Trap frequencies (Hz)   : {trap.frequency}")
 
     # Step 4: Larmor Frequency
     _, B_mag, _ = potential_function(minimum.position)
     larmor = larmor_frequency(atom, B_mag[0])
-    if options.verbose:
-        print("Magnetic field (G):", B_mag[0])
-        print("Larmor frequency (MHz):", larmor.frequency * 1e-6)
+    logger.info(f"Larmor frequency (MHz)  : {larmor.frequency * 1e-6}")
+    logger.info(f"Larmor frequency (rad/s): {larmor.angular}")
 
     # -----------------------------------------------------------------------
     # Part 2: BEC Analysis (Non-Interacting Limit)
@@ -254,13 +254,12 @@ def analyze_trap(
         trap_frequency=trap,
         total_atoms=options.total_atoms,
     )
-    if options.verbose:
-        print("BEC Analysis (Non-Interacting Limit):")
-        print("  a_ho (m):", bec_analysis.a_ho)
-        print("  w_ho (rad/s):", bec_analysis.w_ho)
-        print("  mu_0 (J):", bec_analysis.mu_0)
-        print("  Radii (m):", bec_analysis.radii)
-        print("  T_c (K):", bec_analysis.T_c)
+    logger.info("BEC Analysis (Non-Interacting Limit):")
+    logger.info(f"  a_ho (m)    : {bec_analysis.a_ho}")
+    logger.info(f"  w_ho (rad/s): {bec_analysis.w_ho}")
+    logger.info(f"  mu_0 (J)    : {bec_analysis.mu_0}")
+    logger.info(f"  Radii (m)   : {bec_analysis.radii}")
+    logger.info(f"  T_c (K)     : {bec_analysis.T_c}")
 
     # Step 6: BEC Analysis (Thomas-Fermi Limit)
     tf_analysis = analyze_bec_thomas_fermi(
@@ -268,10 +267,9 @@ def analyze_trap(
         trap_frequency=trap,
         condensed_atoms=options.condensed_atoms,
     )
-    if options.verbose:
-        print("BEC Analysis (Thomas-Fermi Limit):")
-        print("  mu (J):", tf_analysis.mu)
-        print("  Radii (m):", tf_analysis.radii)
+    logger.info("BEC Analysis (Thomas-Fermi Limit):")
+    logger.info(f"  mu (J)      : {tf_analysis.mu}")
+    logger.info(f"  Radii (m)   : {tf_analysis.radii}")
 
     return PotentialAnalysis(
         minimum=minimum,

@@ -32,7 +32,7 @@ def plot_potential_1d(
     min_T = constants.joule_to_microKelvin(atom_chip.potential.minimum.value)
 
     # Check the energy around the minimum point
-    check_index = np.argmin(T)
+    check_index = np.argmin(np.abs(z_vals - z))
     check_start = max(0, check_index - 1)
     check_end = min(len(z_vals) - 1, check_index + 1)
     checK_z_vals = np.linspace(z_vals[check_start], z_vals[check_end], 100)
@@ -49,7 +49,7 @@ def plot_potential_1d(
     # Energy overlay
     ax2 = ax1.twinx()
     ax2.plot(z_vals, T, "ro", markersize=1, label="Energy [μK]")
-    if np.any(check_T < min_T) or np.any(T < min_T):
+    if np.any(check_T < min_T):  # make sure it's local minimum
         # plot text with a warning
         text = f"z={z:.04f} is not the minimum!"
         ax2.text(z + 0.1, min_T + 50, text, ha="left", va="center", fontsize=12, color="red")

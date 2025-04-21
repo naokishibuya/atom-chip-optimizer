@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+import logging
 from typing import Callable
 import numpy as np
 import jax
@@ -57,7 +58,7 @@ def _evaluate(atom_chip: AtomChip, search_options: dict) -> EvaluatorResult:
     # minimize the potential energy
     result = minimize(get_potential_energy, **search_options)
     if not result.success:
-        print("Optimization failed.", result.message)
+        logging.error(f"Optimization failed: {result.message}")
         return EvaluatorResult(False, np.nan, np.nan, np.nan, np.nan, None)
 
     # extract the results

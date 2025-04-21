@@ -1,5 +1,6 @@
 import yaml
 import sys
+import logging
 from typing import Any
 import matplotlib
 
@@ -35,8 +36,7 @@ def show(atom_chip: AtomChip, yaml_path: str):
     visualizer = Visualizer(yaml_path)
     visualizer.update(atom_chip)
 
-    print()
-    input("Press Any Kew to close the figures...\n\n")
+    input("\nPress Enter to close the figures...\n\n")
 
 
 class Visualizer:
@@ -58,7 +58,7 @@ class Visualizer:
             try:
                 self._update_plot(plot_name, atom_chip, plot_config)
             except Exception as e:
-                print(f"Error updating plot '{plot_name}': {e}")
+                logging.error(f"Error updating plot '{plot_name}': {e}")
         plt.draw()
         plt.pause(0.5)
 
@@ -95,13 +95,13 @@ class Visualizer:
 
     def _close_handler(self, event):
         title = event.canvas.manager.get_window_title()
-        print(f"Closed: '{title}'")
+        logging.info(f"Closed: '{title}'")
         for key, fig in list(self._plot_windows.items()):
             if fig.canvas.manager.get_window_title() == title:
                 del self._plot_windows[key]
                 break
         if not self._plot_windows:
-            print("All figures closed.")
+            logging.info("All figures closed.")
             sys.exit(0)
 
 

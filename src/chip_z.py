@@ -104,6 +104,7 @@ def main():
         if not result.success:
             return np.inf
         hessian = result.hessian
+        # finds the principal direction most aligned with the x-axis and returns its eigenvalue.
         eigvals, eigvecs = jnp.linalg.eigh(hessian)
         x_axis = jnp.array([1.0, 0.0, 0.0])
         projections = jnp.abs(jnp.dot(eigvecs.T, x_axis))

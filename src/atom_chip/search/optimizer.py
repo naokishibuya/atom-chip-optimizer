@@ -1,3 +1,4 @@
+import logging
 from dataclasses import dataclass
 from typing import Callable
 from scipy.optimize import minimize, NonlinearConstraint
@@ -36,8 +37,8 @@ def optimize(
     )
 
     if not result.success:
-        print("Optimization failed.")
-        print(result.message)
+        logging.error("Optimization failed.")
+        logging.error(result.message)
 
     return OptimizerResult(
         success=result.success,
