@@ -8,7 +8,7 @@ matplotlib.use("Qt5Agg")
 
 import matplotlib.pyplot as plt
 from PyQt5.QtWidgets import QApplication
-from ..atom_chip import AtomChip
+from ..atom_chip import AtomChip, AtomChipAnalysis
 from .layout_3d import plot_layout_3d
 from .potential_1d import plot_potential_1d
 from .potential_2d import plot_potential_2d
@@ -27,14 +27,14 @@ __all__ = [
 ]
 
 
-def show(atom_chip: AtomChip, yaml_path: str):
+def show(atom_chip: AtomChip, analysis: AtomChipAnalysis, yaml_path: str):
     # Parse command-line arguments
     if "--no-show" in sys.argv:
         return
 
     # Visualize atom chip layout and analytics
     visualizer = Visualizer(yaml_path)
-    visualizer.update(atom_chip)
+    visualizer.update(atom_chip, analysis)
 
     input("\nPress Enter to close the figures...\n\n")
 
@@ -51,28 +51,28 @@ class Visualizer:
         self._left = self._global_left
         self._bottom = 0
 
-    def update(self, atom_chip: AtomChip):
+    def update(self, atom_chip: AtomChip, analysis: AtomChipAnalysis):
         plt.ion()
         for plot_name in self._config["plots"]:
             plot_config = self._config[plot_name]
             try:
-                self._update_plot(plot_name, atom_chip, plot_config)
+                self._update_plot(plot_name, atom_chip, analysis, plot_config)
             except Exception as e:
                 logging.error(f"Error updating plot '{plot_name}': {e}")
         plt.draw()
         plt.pause(0.5)
 
-    def _update_plot(self, name: str, atom_chip: AtomChip, plot_config: dict):
+    def _update_plot(self, name: str, atom_chip: AtomChip, analysis: AtomChipAnalysis, plot_config: dict):
         function = eval(plot_config["function"])
         params = plot_config.get("params", {})
 
         if name in self._plot_windows:
             # Update the existing figure
             fig = self._plot_windows[name]
-            function(atom_chip, fig=fig, **params)
+            function(atom_chip, analysis, fig=fig, **params)
         else:
             # Create a new figure if it doesn't exist and register the close event
-            fig = function(atom_chip, **params)
+            fig = function(atom_chip, analysis, **params)
             self._initialize_position(fig)
             self._plot_windows[name] = fig
             fig.canvas.mpl_connect("close_event", self._close_handler)

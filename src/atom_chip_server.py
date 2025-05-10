@@ -35,13 +35,12 @@ options = ac.potential.AnalysisOptions(
     # for the trap analayis (not used for field analysis)
     total_atoms=1e5,
     condensed_atoms=1e5,
-    verbose = True,
 )
 # fmt: on
 
 # Build the atom chip
 # fmt: off
-atom_chip = ac.AtomChip(
+prototype = ac.AtomChip(
     name        = "Atom Chip Analyzer",
     atom        = ac.rb87,
     components  = [],
@@ -62,9 +61,9 @@ def process_job():
     print("Processing simulation job...")
     layout = layout_queue.get()
     try:
-        atom_chip.from_json(layout)
-        atom_chip.analyze(options)
-        visualizer.update(atom_chip)
+        atom_chip = prototype.from_json(layout)
+        analysis = atom_chip.analyze(options)
+        visualizer.update(atom_chip, analysis)
     except Exception as e:
         print(f"Error processing simulation job: {e}")
 

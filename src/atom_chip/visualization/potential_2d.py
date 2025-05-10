@@ -2,12 +2,13 @@ from typing import Optional, Tuple
 import matplotlib.pyplot as plt
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 import numpy as np
-from ..atom_chip import AtomChip
+from ..atom_chip import AtomChip, AtomChipAnalysis
 from ..potential import constants
 
 
 def plot_potential_2d(
     atom_chip: AtomChip,
+    analysis: AtomChipAnalysis,
     size: Tuple[int, int],
     x_range: Tuple[float, float, int],
     y_range: Tuple[float, float, int],
@@ -25,7 +26,7 @@ def plot_potential_2d(
         fig.clear()
     ax = fig.add_subplot(111)
 
-    if not atom_chip.potential.minimum.found:
+    if not analysis.potential.minimum.found:
         fig.text(0.5, 0.5, "Potential Minimum not found.", ha="center", va="center", fontsize=12)
         return fig
 
@@ -33,7 +34,7 @@ def plot_potential_2d(
     y_vals = np.linspace(*y_range)
     X, Y = np.meshgrid(x_vals, y_vals)
 
-    E_min = atom_chip.potential.minimum
+    E_min = analysis.potential.minimum
     if z is None:
         z = E_min.position[2]
     points = np.array([[x, y, z] for x, y in zip(X.flatten(), Y.flatten())])

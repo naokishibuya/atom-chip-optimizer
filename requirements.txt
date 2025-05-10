@@ -1,9 +1,9 @@
 # common
-numpy==2.2.4
+numpy==2.2.5
 scipy==1.15.2
 pandas==2.2.3
 # jax related
-jax==0.5.3
+jax==0.6.0
 optax==0.2.4
 # visualization
 jupyter==1.1.1
@@ -12,4 +12,4 @@ PyQt5==5.15.11
 PyYAML==6.0.2
 # server
 fastapi==0.115.12
-uvicorn==0.34.0
+uvicorn==0.34.2

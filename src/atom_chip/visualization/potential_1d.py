@@ -1,12 +1,13 @@
 from typing import Optional, Tuple
 import matplotlib.pyplot as plt
 import numpy as np
-from ..atom_chip import AtomChip
+from ..atom_chip import AtomChip, AtomChipAnalysis
 from ..potential import constants
 
 
 def plot_potential_1d(
     atom_chip: AtomChip,
+    analysis: AtomChipAnalysis,
     size: Tuple[int, int],
     z_range: Tuple[float, float, int],
     fig: Optional[plt.Figure] = None,
@@ -18,18 +19,18 @@ def plot_potential_1d(
     ax1 = fig.add_subplot(111)
     fig.gca().grid()
 
-    if not atom_chip.potential.minimum.found:
+    if not analysis.potential.minimum.found:
         fig.text(0.5, 0.5, "Potential Minimum not found.", ha="center", va="center", fontsize=12)
         return fig
 
     # Get the minimum energy point from the atom chip
-    x, y, z = atom_chip.potential.minimum.position
+    x, y, z = analysis.potential.minimum.position
     z_vals = np.linspace(*z_range)
 
     points = np.array([[x, y, z] for z in z_vals])
     E, B_mag, _ = atom_chip.get_potentials(points)
     T = constants.joule_to_microKelvin(E)
-    min_T = constants.joule_to_microKelvin(atom_chip.potential.minimum.value)
+    min_T = constants.joule_to_microKelvin(analysis.potential.minimum.value)
 
     # Check the energy around the minimum point
     check_index = np.argmin(np.abs(z_vals - z))

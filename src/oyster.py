@@ -1,6 +1,7 @@
 import os
 import logging
-from typing import List, Tuple
+from typing import List
+import jax.numpy as jnp
 import atom_chip as ac
 
 
@@ -81,9 +82,9 @@ def build_atom_chip(
     quadrupole_wire_length  : float = PCB_QuadWireLengths,
     quadrupole_wire_currents: List[float] = PCB_QuadWireCurrents,
     # Bias field properties
-    coil_factors            : Tuple[float, float, float] = (Bias_X_CoilFactor , Bias_Y_CoilFactor , Bias_Z_CoilFactor),
-    coil_currents           : Tuple[float, float, float] = (Bias_X_CoilCurrent, Bias_Y_CoilCurrent, Bias_Z_CoilCurrent),
-    stray_fields            : Tuple[float, float, float] = (Bias_X_StrayField , Bias_Y_StrayField , Bias_Z_StrayField),
+    coil_factors            : jnp.ndarray = jnp.array([Bias_X_CoilFactor , Bias_Y_CoilFactor , Bias_Z_CoilFactor]),
+    coil_currents           : jnp.ndarray = jnp.array([Bias_X_CoilCurrent, Bias_Y_CoilCurrent, Bias_Z_CoilCurrent]),
+    stray_fields            : jnp.ndarray = jnp.array([Bias_X_StrayField , Bias_Y_StrayField , Bias_Z_StrayField]),
 ) -> ac.AtomChip:
     # Transport wire length, width, and height
     TL = transport_wire_length / 2  # half length
@@ -153,7 +154,7 @@ def build_atom_chip(
     pcblayer_top = []
     for wire, current in zip(wireCoords_PCBLAYERTOP, I_PCBLAYERTOP):
         pcblayer_top.append(
-            ac.components.RectangularConductor(
+            ac.components.RectangularConductor.create(
                 material = "gold",
                 current  = current,  # Current (A)
                 segments = [wire,],
@@ -251,7 +252,7 @@ def build_atom_chip(
     for i, wires in enumerate(wireCoords_PCBLAYERBOTTOM):
         current = quadrupole_wire_currents[i]
         pcblayer_bottom.append(
-            ac.components.RectangularConductor(
+            ac.components.RectangularConductor.create(
                 material = "copper",
                 current  = current,  # Current (A)
                 segments = wires,
@@ -308,14 +309,14 @@ def main():
     atom_chip = build_atom_chip()
 
     # Perform the analysis
-    atom_chip.analyze(options)
+    analysis = atom_chip.analyze(options)
 
     # Save the atom chip layout to a JSON file
     directory = os.path.dirname(__file__)
     atom_chip.save(os.path.join(directory, "oyster.json"))
 
     # Perform the visualization
-    ac.visualization.show(atom_chip, os.path.join(directory, "visualization.yaml"))
+    ac.visualization.show(atom_chip, analysis, os.path.join(directory, "visualization.yaml"))
 
 
 if __name__ == "__main__":

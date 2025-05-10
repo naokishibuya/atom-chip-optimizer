@@ -2,12 +2,13 @@ from typing import List, Optional, Tuple, Union
 import numpy as np
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d.art3d import Poly3DCollection
-from ..atom_chip import AtomChip
+from ..atom_chip import AtomChip, AtomChipAnalysis
 from ..components import RectangularConductor
 
 
 def plot_layout_3d(
     atom_chip: AtomChip,
+    analysis: AtomChipAnalysis,
     title: str = "Atom Chip Layout",
     size: Tuple[int, int] = (7, 6),
     compute_zorder: bool = True,

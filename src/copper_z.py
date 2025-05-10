@@ -1,6 +1,6 @@
 import os
 import logging
-from typing import Tuple
+import jax.numpy as jnp
 import atom_chip as ac
 
 
@@ -50,9 +50,9 @@ def build_atom_chip(
     sidebar_width    : float = width_COPPERSIDEBARS,
     sidebar_height   : float = height_COPPERSIDEBARS,
     sizebar_current  : float = 0.0,
-    coil_factors     : Tuple[float, float, float] = (Bias_X_CoilFactor , Bias_Y_CoilFactor , Bias_Z_CoilFactor),
-    coil_currents    : Tuple[float, float, float] = (Bias_X_CoilCurrent, Bias_Y_CoilCurrent, Bias_Z_CoilCurrent),
-    stray_fields     : Tuple[float, float, float] = (Bias_X_StrayField , Bias_Y_StrayField , Bias_Z_StrayField),
+    coil_factors     : jnp.ndarray = jnp.array([Bias_X_CoilFactor , Bias_Y_CoilFactor , Bias_Z_CoilFactor]),
+    coil_currents    : jnp.ndarray = jnp.array([Bias_X_CoilCurrent, Bias_Y_CoilCurrent, Bias_Z_CoilCurrent]),
+    stray_fields     : jnp.ndarray = jnp.array([Bias_X_StrayField , Bias_Y_StrayField , Bias_Z_StrayField]),
 ) -> ac.AtomChip:
     # offsets
     copper_z_offset = -(pcb_height + copper_z_gap)
@@ -78,7 +78,7 @@ def build_atom_chip(
         wire[0][2] += copper_z_offset  # start point
         wire[1][2] += copper_z_offset  # end point
 
-    copper_z = ac.components.RectangularConductor(
+    copper_z = ac.components.RectangularConductor.create(
         material = "copper",
         current  = copper_z_current,
         segments = copper_z_wires,
@@ -91,7 +91,7 @@ def build_atom_chip(
         [[ 10, -17, sidebar_offset], [ 10, 17, sidebar_offset], sidebar_width, sidebar_height],
     ]
 
-    sidebars = ac.components.RectangularConductor(
+    sidebars = ac.components.RectangularConductor.create(
         material = "copper",
         current  = sizebar_current,
         segments = sidebar_wires,
@@ -147,14 +147,14 @@ def main():
     atom_chip = build_atom_chip()
 
     # Analyze the atom chip
-    atom_chip.analyze(options)
+    analysis = atom_chip.analyze(options)
 
     # Export the atom chip to JSON
     directory = os.path.dirname(__file__)
     atom_chip.save(os.path.join(directory, "copper_z.json"))
 
     # Perform the visualization
-    ac.visualization.show(atom_chip, os.path.join(directory, "visualization.yaml"))
+    ac.visualization.show(atom_chip, analysis, os.path.join(directory, "visualization.yaml"))
 
 
 if __name__ == "__main__":

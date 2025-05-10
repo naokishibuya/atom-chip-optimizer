@@ -3,12 +3,13 @@ import matplotlib.pyplot as plt
 from matplotlib.widgets import Slider
 from mpl_toolkits.mplot3d.art3d import Poly3DCollection
 import numpy as np
-from ..atom_chip import AtomChip
+from ..atom_chip import AtomChip, AtomChipAnalysis
 from ..potential import constants
 
 
 def plot_potential_3d(
     atom_chip: AtomChip,
+    analysis: AtomChipAnalysis,
     size: Tuple[int, int],
     x_range: Tuple[float, float, int],
     y_range: Tuple[float, float, int],
@@ -23,7 +24,7 @@ def plot_potential_3d(
         fig.clear()
     ax = fig.add_subplot(111, projection="3d")
 
-    if not atom_chip.potential.minimum.found:
+    if not analysis.potential.minimum.found:
         fig.text(0.5, 0.5, "Potential Minimum not found.", ha="center", va="center", fontsize=12)
         return fig
 
@@ -38,11 +39,11 @@ def plot_potential_3d(
         initial_z = z
         z_vals = [z]
     else:
-        initial_z = atom_chip.potential.minimum.position[2]
+        initial_z = analysis.potential.minimum.position[2]
         z_vals = [initial_z]
 
     # Initial plot
-    surf = _plot_3d_trapping_potential(atom_chip, ax, X, Y, initial_z, zlim)
+    surf = _plot_3d_trapping_potential(atom_chip, analysis, ax, X, Y, initial_z, zlim)
 
     # Colorbar
     fig.colorbar(surf, ax=ax, shrink=0.6, aspect=10, label="Energy [μK]", pad=0.1)
@@ -61,7 +62,7 @@ def plot_potential_3d(
 
         def update(val):
             ax.clear()
-            _plot_3d_trapping_potential(atom_chip, ax, X, Y, val, zlim)
+            _plot_3d_trapping_potential(atom_chip, analysis, ax, X, Y, val, zlim)
             fig.canvas.draw_idle()
 
         slider.on_changed(update)
@@ -71,6 +72,7 @@ def plot_potential_3d(
 
 def _plot_3d_trapping_potential(
     atom_chip: AtomChip,
+    analysis: AtomChipAnalysis,
     ax: plt.Axes,
     X: np.ndarray,  # Meshgrid x-coordinates
     Y: np.ndarray,  # Meshgrid y-coordinates
@@ -78,7 +80,7 @@ def _plot_3d_trapping_potential(
     zlim: Tuple[float, float],  # z-axis limits for the plot
 ) -> Poly3DCollection:
     # Get the energy at a given z-coordinate or the minimum energy point
-    E_min = atom_chip.potential.minimum
+    E_min = analysis.potential.minimum
     z = z if z is not None else E_min.position[2]
     point = np.array([E_min.position[0], E_min.position[1], z])
     V_at_z = atom_chip.get_potentials(point)[0][0]

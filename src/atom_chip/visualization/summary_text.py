@@ -5,7 +5,7 @@ import numpy as np
 import jax.numpy as jnp
 from PyQt5.QtWidgets import QWidget, QVBoxLayout, QTextEdit
 from PyQt5.QtGui import QFont
-from atom_chip.atom_chip import AtomChip
+from atom_chip.atom_chip import AtomChip, AtomChipAnalysis
 
 
 def get_monospaced_font() -> str:
@@ -21,6 +21,7 @@ def get_monospaced_font() -> str:
 
 def show_summary(
     atom_chip: AtomChip,
+    analysis: AtomChipAnalysis,
     size: Tuple[int, int],
     font_family: str = get_monospaced_font(),
     font_size: int = 10,
@@ -63,17 +64,17 @@ def show_summary(
         # Store reference to text box
         fig.text_box = text_box
 
-    fig.text_box.setPlainText(format_summary(atom_chip))
+    fig.text_box.setPlainText(format_summary(atom_chip, analysis))
     fig.tight_layout()
     return fig
 
 
-def format_summary(atom_chip: AtomChip) -> str:
+def format_summary(atom_chip: AtomChip, analysis: AtomChipAnalysis) -> str:
     # Bias field parameters
     # fmt: off
     bias       = atom_chip.bias_fields
-    field      = atom_chip.field
-    potential  = atom_chip.potential
+    field      = analysis.field
+    potential  = analysis.potential
     bias_found = bias is not None
     fmin_found = field.minimum.found
     tmin_found = potential.minimum.found

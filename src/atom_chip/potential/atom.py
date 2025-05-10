@@ -1,6 +1,5 @@
 from dataclasses import dataclass
 from jax.tree_util import register_dataclass
-from functools import cached_property
 from . import constants
 
 
@@ -23,7 +22,7 @@ class Atom:
     mF: float  # Magnetic quantum number
     a_s: float  # s-wave scattering length (m)
 
-    @cached_property
+    @property
     def mu(self) -> float:
         """
         Calculate the effective magnetic moment of the atom.

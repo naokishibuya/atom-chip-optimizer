@@ -1,9 +1,11 @@
-from typing import List, Tuple, Union
+import logging
+from typing import Tuple, Union
 from dataclasses import dataclass
 import jax
 import jax.numpy as jnp
 
 
+logging.getLogger("jax").setLevel(logging.ERROR)
 jax.config.update("jax_enable_x64", True)
 
 
@@ -11,7 +13,7 @@ jax.config.update("jax_enable_x64", True)
 PositionType = Tuple[float, float, float]
 
 
-@dataclass
+@dataclass(frozen=True)
 class RectangularSegment:
     start: PositionType
     end: PositionType
@@ -30,6 +32,8 @@ RectangularSegmentType = Union[
 ]
 
 
+# fmt: off
+@dataclass(frozen=True)
 class RectangularConductor:
     """
     A wire segment in 3D space defined by a rectangular cross-section.
@@ -40,15 +44,12 @@ class RectangularConductor:
         segments (List[RectangularSegmentType]): List of rectangular segments in millimeters (mm).
     """
 
-    def __init__(
-        self,
-        material: str,
-        current: float,
-        segments: List[RectangularSegmentType],
-    ):
-        self.material = material
-        self.current = current
-        self.starts, self.ends, self.widths, self.heights = map(jnp.float64, zip(*(segments)))
+    material: str
+    current : float
+    starts  : jnp.ndarray  # shape (N, 3)
+    ends    : jnp.ndarray  # shape (N, 3)
+    widths  : jnp.ndarray  # shape (N,)
+    heights : jnp.ndarray  # shape (N,)
 
     @property
     def currents(self) -> jnp.ndarray:
@@ -67,6 +68,20 @@ class RectangularConductor:
             self.widths,
             self.heights,
         )
+
+    @staticmethod
+    def create(material: str, current: float, segments: list) -> "RectangularConductor":
+        segs = [s if isinstance(s, RectangularSegment) else RectangularSegment(*s) for s in segments]
+        starts, ends, widths, heights = zip(*segs)
+        return RectangularConductor(
+            material= material,
+            current = current,
+            starts  = jnp.array(starts, dtype=jnp.float64),
+            ends    = jnp.array(ends, dtype=jnp.float64),
+            widths  = jnp.array(widths, dtype=jnp.float64),
+            heights = jnp.array(heights, dtype=jnp.float64),
+        )
+# fmt: on
 
 
 # fmt: off

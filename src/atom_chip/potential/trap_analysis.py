@@ -148,7 +148,7 @@ def analyze_field(
         B_mag, _ = field_function(point)
         return B_mag[0]
 
-    # search for the minimum
+    # Step 1: Potential Minimum
     logger.info(options.search)
     minimum = search_minimum(objective, **options.search)
     if minimum.found:
