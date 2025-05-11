@@ -6,6 +6,7 @@ import logging
 import os
 from typing import Tuple
 import matplotlib.pyplot as plt
+from PyQt5.QtCore import Qt
 import jax
 import jax.numpy as jnp
 import optax
@@ -20,6 +21,24 @@ def current_density(x: float, g: float, z0: float) -> jnp.ndarray:
     """
     Compute the current density profile j_y(x) for a quadrupole trap with an infinite flat sheet of current.
     (Solved with the calculus of variations)
+
+    The trap is a 45°-rotated 2D quadrupole trap with the following properties:
+
+    The field is zero at the trap center:
+
+        B_x(x_0, z_0) = 0
+        B_z(x_0, z_0) = 0
+
+    The field gradient at the trap center is constant:
+
+        dB_x/dx(x_0,z_0) = 0
+        dB_x/dz(x_0,z_0) = g    where g is the field gradient [G/mm]
+
+    The parameters are z_0 and g, and x_0 is assumed to be zero.
+
+    These 4 constraints are satisfied by applying Biot-Savart's law to the infinite flat sheet of current in
+    which the current flows in the positive/negative y-direction only, and solving the Euler-Lagrange equation
+    with multiple Lagrange multipliers.
 
     Args:
         x: Position in x-axis.
@@ -54,82 +73,8 @@ def find_roots(func, x_min: float, x_max: float, num_points: int):
     return find_roots
 
 
-def plot_current_density(func, x_min: float, x_max: float, num_points: int, roots: list):
-    """
-    Plot the current density profile and mark the roots.
-    Args:
-        func: The function to evaluate.
-        x_min: Minimum x value to plot.
-        x_max: Maximum x value to plot.
-        num_points: Number of points to sample in the range.
-        roots: List of roots to mark on the plot.
-    """
-    # Plot the current density profile with the roots
-    x_values = jnp.linspace(x_min, x_max, num_points)
-    j_y = func(x_values)
-
-    plt.figure(figsize=(10, 6))
-    plt.title("Current Density Profile")
-    plt.plot(x_values, j_y)
-    plt.axhline(0, color="black", linestyle="--")
-    plt.axvline(0, color="black", linestyle="--")
-    for root in roots:
-        plt.axvspan(root, root, color="red", alpha=0.3)
-    plt.xlabel("x' (mm)")
-    plt.ylabel("j_y (A/m)")  # It's a line density and not A/m^2
-    plt.grid()
-
-
-def plot_field_magnitude(func, g: float, z0: float):
-    """
-    Plot the field magnitude profile.
-    Args:
-        func: The function to evaluate.
-        g: The field gradient (dBx/dz) at the center of the trap.
-        z0: trap z value
-        num_points: Number of points to sample in the range.
-    """
-    # Compute B_x(z) from Biot–Savart integral at x = 0
-    # B_x(0,z) = ∫ j_y(x') * 2z / (x'^2 + z^2) dx'
-    # We'll evaluate this numerically for each z
-
-    # Precompute j_y(x') over x' for integration
-    x_prime = jnp.linspace(-100, 100, 1000)
-    jy_vals = func(x_prime)
-
-    # Define z range to evaluate B_x and its gradient
-    z_min, z_max = z0 * 0.4, z0 * 1.6
-    z_values = jnp.linspace(z_min, z_max, 500)  # Avoid z=0 to prevent singularity
-
-    # Compute B_x(z) as an array
-    Bx = jax.scipy.integrate.trapezoid(
-        jy_vals * 2 * z_values[:, None] / (x_prime**2 + z_values[:, None] ** 2),
-        x_prime,
-        axis=1,
-    )
-
-    # Compute dB_x/dz using numerical differentiation
-    dBx_dz = jnp.gradient(Bx, z_values)
-
-    # Plot |B_x(z)| and dB_x/dz vs. z
-    plt.figure(figsize=(10, 6))
-    plt.plot(z_values, jnp.abs(Bx), label=r"$|B_x(z)|$", color="green")
-    plt.plot(z_values, dBx_dz, label=r"$\frac{dB_x}{dz}$", color="red")
-    plt.axhline(g, color="black", linestyle="--")
-    plt.axvline(z0, color="black", linestyle="--")
-    plt.grid(True)
-    plt.xlim(z_min, z_max)
-    plt.ylim(0, 2.5 * g)
-    plt.xlabel("z [mm]")
-    plt.ylabel(r"$|B_x|$ [G]")
-    plt.legend()
-    plt.gca().twinx().set_ylabel(r"$\frac{dB_x}{dz}$ [G/mm]")
-    plt.title("Magnitude of $B_x$ and its Gradient vs $z$")
-    plt.tight_layout()
-
-
 def integrate_current_density(
-    func, x_min: float, x_max: float, num_points: int, roots
+    func, x_min: float, x_max: float, num_points: int, roots: list
 ) -> Tuple[jnp.ndarray, jnp.ndarray]:
     """
     Integrate the current density to find the total current within the brackets
@@ -167,9 +112,113 @@ def integrate_current_density(
     return jnp.array(currents), jnp.array(centers)
 
 
+def plot_current_density(func, g: float, z0: float, roots: list, currents: jnp.ndarray, centers: jnp.ndarray):
+    """
+    Plot the current density profile and mark the roots.
+    Args:
+        func: The function to evaluate.
+        g: The field gradient (dBx/dz) at the center of the trap.
+        z0: trap z value
+        roots: List of roots to mark on the plot.
+    """
+    # Plot the current density profile with the roots
+    x_values = jnp.linspace(-15, 15, 1000)
+    j_y = func(x_values)
+
+    fig = plt.figure(figsize=(7, 5))
+    plt.title(f"Ideal 2D Quadrupole Trap (g={g} G/mm, $z_0$={z0} mm)\nLine Current Density Profile")
+    plt.plot(x_values, j_y)
+    plt.axhline(0, color="black", linestyle="--")
+    plt.axvline(0, color="black", linestyle="--")
+    for root in roots:
+        plt.axvspan(root, root, color="red", alpha=0.3)
+    # put shaded are between the x-axis and the line
+    points = [x_values[0], *roots, x_values[-1]]
+    ranges = [(points[i], points[i + 1]) for i in range(len(points) - 1)]
+    for (x_start, x_end), current, center in zip(ranges, currents, centers):
+        plt.fill_between(
+            x_values,
+            j_y,
+            where=((x_start <= x_values) & (x_values <= x_end)),
+            color="red" if current < 0 else "blue",
+            alpha=0.3,
+        )
+        shift = -2.5 if center <= 0 else 2.5
+        plt.annotate(
+            f"{current:.2f} A/m",
+            xy=(center, func(center) / 2),
+            xytext=(center + shift, func(center) + 0.7),
+            arrowprops=dict(arrowstyle="->", lw=1.5),
+            fontsize=8,
+            ha="right" if center <= 0 else "left",
+            va="center",
+        )
+    plt.xlabel("x' (mm)")
+    plt.ylabel("j_y (A/m)")  # It's a line density and not A/m^2
+    plt.grid()
+    return fig
+
+
+def plot_field_magnitude(func, g: float, z0: float):
+    """
+    Plot the field magnitude profile.
+    Args:
+        func: The function to evaluate.
+        g: The field gradient (dBx/dz) at the center of the trap.
+        z0: trap z value
+        num_points: Number of points to sample in the range.
+    """
+    # Compute B_x(z) from Biot–Savart integral at x = 0
+    # B_x(0,z) = ∫ j_y(x') * 2z / (x'^2 + z^2) dx'
+    # We'll evaluate this numerically for each z
+
+    # Precompute j_y(x') over x' for integration
+    x_prime = jnp.linspace(-100, 100, 1000)
+    jy_vals = func(x_prime)
+
+    # Define z range to evaluate B_x and its gradient
+    z_min, z_max = z0 * 0.4, z0 * 1.6
+    z_values = jnp.linspace(z_min, z_max, 500)  # Avoid z=0 to prevent singularity
+
+    # Compute B_x(z) as an array
+    Bx = jax.scipy.integrate.trapezoid(
+        jy_vals * 2 * z_values[:, None] / (x_prime**2 + z_values[:, None] ** 2),
+        x_prime,
+        axis=1,
+    )
+
+    # Compute dB_x/dz using numerical differentiation
+    dBx_dz = jnp.gradient(Bx, z_values)
+
+    # Plot |B_x(z)| and dB_x/dz vs. z
+    fig = plt.figure(figsize=(7, 5))
+    plt.plot(z_values, jnp.abs(Bx), label=r"$|B_x(z)|$", color="green")
+    plt.plot(z_values, dBx_dz, label=r"$\frac{dB_x}{dz}$", color="red")
+    plt.axhline(g, color="black", linestyle="--")
+    plt.axvline(z0, color="black", linestyle="--")
+    plt.grid(True)
+    plt.xlim(z_min, z_max)
+    plt.ylim(0, 2.5 * g)
+    plt.xlabel("z [mm]")
+    plt.ylabel(r"$|B_x|$ [G]")
+    plt.legend()
+    plt.gca().twinx().set_ylabel(r"$\frac{dB_x}{dz}$ [G/mm]")
+    plt.title(f"Ideal 2D Quadrupole Trap (g={g} G/mm, $z_0$={z0} mm)\nMagnitude of $B_x$ and its Gradient vs $z$")
+    plt.tight_layout()
+    return fig
+
+
+def adjust_plot_window(fig, top: int, left: int):
+    window = fig.canvas.manager.window
+    window.setWindowFlag(Qt.WindowStaysOnTopHint)
+    geometry = window.geometry()
+    window.setGeometry(left, top, geometry.width(), geometry.height())
+    return window.geometry()
+
+
 def calculate_quadrupole_currents(g: float, z0: float) -> Tuple[jnp.ndarray, jnp.ndarray]:
     """
-    Calculate the currents for the quadrupole trap.
+    Calculate the sheet currents for the quadrupole trap.
 
     Args:
         g: The field gradient (dBx/dz) at the center of the trap.
@@ -184,13 +233,15 @@ def calculate_quadrupole_currents(g: float, z0: float) -> Tuple[jnp.ndarray, jnp
 
     # Find the roots of the equation and integrate the current density with respect to x'
     roots = find_roots(func, x_min=-10.0, x_max=10.0, num_points=1000)
-    print(f"Roots where current crosses zero: {roots}")
+    currents, centers = integrate_current_density(func, x_min=-100.0, x_max=100.0, num_points=10000, roots=roots)
 
     # Plot the current density profile
-    plot_current_density(func, x_min=-20, x_max=20, num_points=100, roots=roots)
-    plot_field_magnitude(func, g=g, z0=z0)
+    fig1 = plot_current_density(func, g=g, z0=z0, roots=roots, currents=currents, centers=centers)
+    fig2 = plot_field_magnitude(func, g=g, z0=z0)
 
-    currents, centers = integrate_current_density(func, x_min=-100.0, x_max=100.0, num_points=10000, roots=roots)
+    geo1 = adjust_plot_window(fig1, top=100, left=100)
+    adjust_plot_window(fig2, top=geo1.top(), left=geo1.left() + geo1.width() + 10)
+
     return currents, centers
 
 
@@ -260,12 +311,9 @@ def evaluate_field_and_gradient(atom_chip, r0: jnp.ndarray):
 
 
 def optimize_currents(initial_currents, centers, length, width, height, g, z0, steps, lr):
-    def make_chip_from_currents(currents):
-        return make_chip_q(currents=currents, centers=centers, length=length, width=width, height=height)
-
     @jax.jit
     def loss_fn(currents):
-        chip = make_chip_from_currents(currents)
+        chip = make_chip_q(currents=currents, centers=centers, length=length, width=width, height=height)
         r0 = jnp.array([0.0, 0.0, z0])  # Desired trap position
 
         def B_fn(r):
@@ -279,7 +327,7 @@ def optimize_currents(initial_currents, centers, length, width, height, g, z0, s
         field_term = jnp.sum(B**2)
         grad_term = (grad_B[0, 0]) ** 2 + (grad_B[0, 2] - g) ** 2
 
-        λ = 1.0
+        λ = 0.7
         return field_term + λ * grad_term
 
     optimizer = optax.adam(lr)
