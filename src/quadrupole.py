@@ -17,6 +17,13 @@ import atom_chip as ac
 logging.basicConfig(level=logging.INFO)
 
 
+MATERIAL = "copper"
+
+
+def get_matrial_color(current: float):
+    return ac.visualization.layout_3d._get_material_color(MATERIAL, current)
+
+
 def current_density(x: float, g: float, z0: float) -> jnp.ndarray:
     """
     Compute the current density profile j_y(x) for a quadrupole trap with an infinite flat sheet of current.
@@ -122,7 +129,7 @@ def plot_current_density(func, g: float, z0: float, roots: list, currents: jnp.n
         roots: List of roots to mark on the plot.
     """
     # Plot the current density profile with the roots
-    x_values = jnp.linspace(-15, 15, 1000)
+    x_values = jnp.linspace(-10, 10, 1000)
     j_y = func(x_values)
 
     fig = plt.figure(figsize=(7, 5))
@@ -140,21 +147,20 @@ def plot_current_density(func, g: float, z0: float, roots: list, currents: jnp.n
             x_values,
             j_y,
             where=((x_start <= x_values) & (x_values <= x_end)),
-            color="red" if current < 0 else "blue",
-            alpha=0.3,
+            color=get_matrial_color(current),
+            alpha=0.6,
         )
-        shift = -2.5 if center <= 0 else 2.5
         plt.annotate(
             f"{current:.2f} A/m",
             xy=(center, func(center) / 2),
-            xytext=(center + shift, func(center) + 0.7),
-            arrowprops=dict(arrowstyle="->", lw=1.5),
+            xytext=(center, func(center) + 0.1),
+            arrowprops=dict(arrowstyle="-", linestyle="dotted", lw=0.5),
             fontsize=8,
             ha="right" if center <= 0 else "left",
-            va="center",
+            va="top" if current < 0 else "bottom",
         )
     plt.xlabel("x' (mm)")
-    plt.ylabel("j_y (A/m)")  # It's a line density and not A/m^2
+    plt.ylabel("$j_y$ (A/m)")  # It's a line density and not A/m^2
     plt.grid()
     return fig
 
@@ -192,8 +198,8 @@ def plot_field_magnitude(func, g: float, z0: float):
 
     # Plot |B_x(z)| and dB_x/dz vs. z
     fig = plt.figure(figsize=(7, 5))
-    plt.plot(z_values, jnp.abs(Bx), label=r"$|B_x(z)|$", color="green")
-    plt.plot(z_values, dBx_dz, label=r"$\frac{dB_x}{dz}$", color="red")
+    plt.plot(z_values, jnp.abs(Bx), label=r"$|B_x(z)|$", color="blue")
+    plt.plot(z_values, dBx_dz, label=r"$\frac{dB_x}{dz}$", color="green")
     plt.axhline(g, color="black", linestyle="--")
     plt.axvline(z0, color="black", linestyle="--")
     plt.grid(True)
@@ -253,13 +259,13 @@ def make_chip_q(
     length      : float,
     width       : float,
     height      : float,
-    bias_fields : ac.field.BiasFields = ac.field.ZERO_BIAS_FIELD,
 ) -> ac.AtomChip:
+    # Create the atom chip wire segments
     components = []
     for current, center in zip(currents, centers):
         components.append(
             ac.components.RectangularConductor.create(
-                material = "gold",
+                material = MATERIAL,
                 current  = current,
                 segments = [
                     # [[start point], [end point], width, height]
@@ -277,98 +283,81 @@ def make_chip_q(
         name       = "Quadrupole",
         atom       = ac.rb87,
         components = components,
-        bias_fields= bias_fields,
+        bias_fields= ac.field.ZERO_BIAS_FIELD,
     )
 # fmt: on
 
 
-def evaluate_field_and_gradient(atom_chip, r0: jnp.ndarray):
-    """
-    Compute the magnetic field and its spatial gradient at a given point.
+def optimize_params(make_chip, params, g, z0):
+    def loss_fn(params):
+        # Create the atom chip with the current configuration
+        atom_chip = make_chip(params)
 
-    Args:
-        atom_chip: An AtomChip object.
-        r0: 3D position to evaluate the field [x, y, z] (in mm).
-
-    Returns:
-        Tuple of (B_field: [3], grad_B: [3,3])
-    """
-    r0 = jnp.array(r0)
-
-    def B_fn(r):
-        _, B = atom_chip.get_fields(r[None])
-        return B[0]
-
-    grad_B_fn = jax.jacfwd(B_fn)
-    B = B_fn(r0)
-    grad_B = grad_B_fn(r0)
-
-    print(f"r0: {r0}")
-    print(f"Field at r0: B = {B}")
-    print(f"Gradient at r0:\n{grad_B}")
-
-    return B, grad_B
-
-
-def optimize_currents(initial_currents, centers, length, width, height, g, z0, steps, lr):
-    @jax.jit
-    def loss_fn(currents):
-        chip = make_chip_q(currents=currents, centers=centers, length=length, width=width, height=height)
-        r0 = jnp.array([0.0, 0.0, z0])  # Desired trap position
-
+        # Field and grad functions
         def B_fn(r):
-            _, B = chip.get_fields(r[None])
+            _, B = atom_chip.get_fields(r[None])
             return B[0]
 
-        grad_B_fn = jax.jacfwd(B_fn)
+        # Compute the field and its gradient at the desired position
+        r0 = jnp.array([0.0, 0.0, z0])  # Desired trap position
         B = B_fn(r0)
+        grad_B_fn = jax.jacfwd(B_fn)
         grad_B = grad_B_fn(r0)
 
-        field_term = jnp.sum(B**2)
+        # Compute the loss as the sum of the field and gradient terms
+        field_term = jnp.sum(B[0] ** 2 + B[2] ** 2)
         grad_term = (grad_B[0, 0]) ** 2 + (grad_B[0, 2] - g) ** 2
 
-        λ = 0.7
-        return field_term + λ * grad_term
+        # Loss value
+        λ1 = 0.7
+        return field_term + λ1 * grad_term
 
-    optimizer = optax.adam(lr)
-    opt_state = optimizer.init(initial_currents)
+    loss_and_grad = jax.jit(jax.value_and_grad(loss_fn))
 
-    params = initial_currents
+    # Initialize the optimizer
+    optimizer = optax.chain(
+        optax.clip_by_global_norm(1.0),  # optional
+        optax.adamw(learning_rate=1e-4, weight_decay=1e-4),
+    )
+    opt_state = optimizer.init(params)
 
-    for step in range(steps):
-        loss, grads = jax.value_and_grad(loss_fn)(params)
-        updates, opt_state = optimizer.update(grads, opt_state)
+    # Perform optimization
+    steps = 50000
+    for step in range(1, steps + 1):
+        loss, grads = loss_and_grad(params)
+        updates, opt_state = optimizer.update(grads, opt_state, params)
         params = optax.apply_updates(params, updates)
 
-        if step % 100 == 0:
+        if step % (steps // 10) == 0:
             print(f"Step {step}: Loss = {loss:.6g}")
+
+    print(f"Optimized params: {params}")
     return params
 
 
 def main():
     # Fix the field gradient (g=dBx/dz) and the trap position (z0)
-    g = 3.0  # Gradient strength
+    g = 4.0  # Gradient strength
     z0 = 1.0  # Distance from the center of the trap to the wire
 
     # Calculate the currents and centers for the quadrupole trap
     currents, centers = calculate_quadrupole_currents(g=g, z0=z0)
 
-    # Build the atom chip
+    # Build the atom chip with the initial currents and centers, and perform optimization
     length = 100.0  # mm
-    width = 5.0  # mm
-    height = 0.01  # mm
+    width = jnp.array([5])  # mm
+    height = 0.001  # mm
 
-    optimized_currents = optimize_currents(currents, centers, length, width, height, g, z0, steps=5000, lr=0.01)
+    def make_chip(params: jnp.array):
+        centers, width = params[:3], params[3]
+        return make_chip_q(currents, centers, length, width, height)
 
-    print(f"Optimized currents: {optimized_currents}")
+    # Optimize these parameters to replicate the desired field
+    params = jnp.concatenate([centers, width])
+    optimized_params = optimize_params(make_chip, params, g=g, z0=z0)
 
     # Build final chip
-    bias_fields = ac.field.BiasFields(
-        coil_factors=jnp.array([0.0, 0.0, 0.0]),
-        currents=jnp.array([0.0, 0.0, 0.0]),
-        stray_fields=jnp.array([0.5, 0.5, 0.0]),
-    )
-    atom_chip = make_chip_q(optimized_currents, centers, length, width, height, bias_fields)
+    atom_chip = make_chip(optimized_params)
 
     # fmt: off
     options = ac.potential.AnalysisOptions(

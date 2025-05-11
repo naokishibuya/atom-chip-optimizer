@@ -1,11 +1,9 @@
-import logging
 from typing import Tuple, Union
 from dataclasses import dataclass
 import jax
 import jax.numpy as jnp
 
 
-logging.getLogger("jax").setLevel(logging.ERROR)
 jax.config.update("jax_enable_x64", True)
 
 
