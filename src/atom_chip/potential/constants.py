@@ -34,3 +34,14 @@ def joule_to_microKelvin(E: float) -> float:
         float: Energy in microKelvin.
     """
     return E * 1e6 / kB
+
+
+def microKelvin_to_joule(T: float) -> float:
+    """
+    Convert temperature from microKelvin to Joules.
+    Args:
+        T (float): Temperature in microKelvin.
+    Returns:
+        float: Temperature in Joules.
+    """
+    return T * kB / 1e6

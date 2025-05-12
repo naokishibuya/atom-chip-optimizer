@@ -65,6 +65,38 @@ class Atom:
         g = constants.g
         return self.mu * B_mag * 1e-4 - self.mass * g * z * 1e-3
 
+    def gravity_equivalent_field(self, z: float) -> float:
+        """
+        Calculate the gravitational equivalent of the magnetic field.
+
+        This is the magnetic field strength that would produce the same potential energy
+        as the gravitational potential energy at a given height.
+
+        Args:
+            z (float): Height of the atom in millimeters.
+
+        Returns:
+            float: Gravitational equivalent of the magnetic field in Gauss.
+        """
+        g = constants.g
+        return self.mass * g * z * 1e-3 / self.mu * 1e4
+
+    def gravity_equivalent_potential(self, z: float) -> float:
+        """
+        Calculate the gravitational equivalent potential energy.
+
+        This is the potential energy that would be equivalent to the gravitational potential energy
+        at a given height.
+
+        Args:
+            z (float): Height of the atom in millimeters.
+
+        Returns:
+            float: Gravitational equivalent potential energy in J.
+        """
+        g = constants.g
+        return self.mass * g * z * 1e-3
+
 
 # Define the properties of the rubidium-87 atom
 # fmt: off

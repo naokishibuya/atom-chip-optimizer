@@ -183,7 +183,7 @@ def plot_field_magnitude(func, g: float, z0: float):
     jy_vals = func(x_prime)
 
     # Define z range to evaluate B_x and its gradient
-    z_min, z_max = z0 * 0.4, z0 * 1.6
+    z_min, z_max = 0.0, 2.0  # mm
     z_values = jnp.linspace(z_min, z_max, 500)  # Avoid z=0 to prevent singularity
 
     # Compute B_x(z) as an array
@@ -288,10 +288,10 @@ def make_chip_q(
 # fmt: on
 
 
-def optimize_params(make_chip, params, g, z0):
+def optimize_params(objective, params, g, z0):
     def loss_fn(params):
         # Create the atom chip with the current configuration
-        atom_chip = make_chip(params)
+        atom_chip = objective(params)
 
         # Field and grad functions
         def B_fn(r):
@@ -309,20 +309,17 @@ def optimize_params(make_chip, params, g, z0):
         grad_term = (grad_B[0, 0]) ** 2 + (grad_B[0, 2] - g) ** 2
 
         # Loss value
-        λ1 = 0.7
+        λ1 = 0.1
         return field_term + λ1 * grad_term
 
     loss_and_grad = jax.jit(jax.value_and_grad(loss_fn))
 
     # Initialize the optimizer
-    optimizer = optax.chain(
-        optax.clip_by_global_norm(1.0),  # optional
-        optax.adamw(learning_rate=1e-4, weight_decay=1e-4),
-    )
+    optimizer = optax.adam(learning_rate=1e-2)
     opt_state = optimizer.init(params)
 
     # Perform optimization
-    steps = 50000
+    steps = 1000
     for step in range(1, steps + 1):
         loss, grads = loss_and_grad(params)
         updates, opt_state = optimizer.update(grads, opt_state, params)
@@ -337,27 +334,36 @@ def optimize_params(make_chip, params, g, z0):
 
 def main():
     # Fix the field gradient (g=dBx/dz) and the trap position (z0)
-    g = 4.0  # Gradient strength
+    g = 8.0  # Gradient strength
     z0 = 1.0  # Distance from the center of the trap to the wire
 
     # Calculate the currents and centers for the quadrupole trap
     currents, centers = calculate_quadrupole_currents(g=g, z0=z0)
 
-    # Build the atom chip with the initial currents and centers, and perform optimization
+    # Estimate the gravitational effects
+    geq_f = ac.rb87.gravity_equivalent_field(z0)
+    geq_p = ac.rb87.gravity_equivalent_potential(z0)
+    geq_μK = ac.constants.joule_to_microKelvin(geq_p)
+    print(f"Gravity equivalent field: {geq_f:.2g} G")
+    print(f"Gravity equivalent energy: {geq_p:.2g} J")
+    print(f"Gravity equivalent energy: {geq_μK:.2g} μK")
+
+    # Build the atom chip with the initial parameters, and perform optimization
     length = 100.0  # mm
     width = jnp.array([5])  # mm
     height = 0.001  # mm
 
-    def make_chip(params: jnp.array):
+    def objective(params: jnp.array):
         centers, width = params[:3], params[3]
         return make_chip_q(currents, centers, length, width, height)
 
     # Optimize these parameters to replicate the desired field
     params = jnp.concatenate([centers, width])
-    optimized_params = optimize_params(make_chip, params, g=g, z0=z0)
+    optimized_params = optimize_params(objective, params, g=g, z0=z0)
 
     # Build final chip
-    atom_chip = make_chip(optimized_params)
+    centers, width = optimized_params[:3], optimized_params[3]
+    atom_chip = make_chip_q(currents, centers, length, width, height)
 
     # fmt: off
     options = ac.potential.AnalysisOptions(
