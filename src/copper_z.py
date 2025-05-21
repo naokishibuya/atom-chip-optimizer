@@ -8,51 +8,51 @@ import atom_chip as ac
 #-------------------------------------------------------------
 # PCB - not used so it gives offsets only
 #-------------------------------------------------------------
-height_PCBLAYERTOP    : float = 0.07   # PCB Top Layer tickness (2 oz copper)
-height_PCBLAYERBOTTOM : float = 0.07   # PCB Bottom Layer tickness (2 oz copper)
-PCBCoreThickness      : float = 0.38   # 0.42; %0.38;
+PCB_LAYER_TOP_HEIGHT    : float = 0.07   # PCB Top Layer tickness (2 oz copper)
+PCB_LAYER_BOTTOM_HEIGHT : float = 0.07   # PCB Bottom Layer tickness (2 oz copper)
+PCB_CORE_HEIGHT         : float = 0.38   # 0.42; %0.38;
 
 #--------------------------------------------------------------
 # Copper Z
 #--------------------------------------------------------------
 # Gap between top face of Copper Z and top face of PCB (surface after QWP fell)
-CopperZ_gap           : float = 0.188 
+COOPER_Z_GAP           : float = 0.188 
 
 #-------------------------------------------------------------
 # Sidebars
 #-------------------------------------------------------------
-width_COPPERSIDEBARS  : float = 2.0  # Copper Sidebars width
-height_COPPERSIDEBARS : float = 1.0  # Copper Sidebars thickness
+COPPER_SIDE_BAR_WIDTH  : float = 2.0  # Copper Sidebars width
+COPPER_SIDE_BAR_HEIGHT : float = 1.0  # Copper Sidebars thickness
 
 #-------------------------------------------------------------
 # Bias fields
 #-------------------------------------------------------------
 # Coil Current [A] to Field [G] Conversion:
-Bias_X_CoilFactor  : float = -1.068  # [G/A]
-Bias_Y_CoilFactor  : float =  1.8    # [G/A]
-Bias_Z_CoilFactor  : float =  3.0    # [G/A]
+BIAS_X_COIL_FACTOR  : float = -1.068  # [G/A]
+BIAS_Y_COIL_FACTOR  : float =  1.8    # [G/A]
+BIAS_Z_COIL_FACTOR  : float =  3.0    # [G/A]
 
 # Coil currents [A] to be applied to the external coils
-Bias_X_CoilCurrent : float = 17.4
-Bias_Y_CoilCurrent : float = 44.3
-Bias_Z_CoilCurrent : float = 0.0
+BIAS_X_COIL_CURRENT : float = 17.4
+BIAS_Y_COIL_CURRENT : float = 44.3
+BIAS_Z_COIL_CURRENT : float = 0.0
 
 # PCB stray fields (G)
-Bias_X_StrayField  : float =  3.5
-Bias_Y_StrayField  : float = -0.1
-Bias_Z_StrayField  : float =  0.0
+BIAS_X_STRAY_FIELD  : float =  3.5
+BIAS_Y_STRAY_FIELD  : float = -0.1
+BIAS_Z_STRAY_FIELD  : float =  0.0
 
 
 def build_atom_chip(
-    pcb_height       : float = height_PCBLAYERTOP + PCBCoreThickness + height_PCBLAYERBOTTOM,
-    copper_z_gap     : float = CopperZ_gap,
+    pcb_height       : float = PCB_LAYER_TOP_HEIGHT + PCB_CORE_HEIGHT + PCB_LAYER_BOTTOM_HEIGHT,
+    copper_z_gap     : float = COOPER_Z_GAP,
     copper_z_current : float = 85.0,
-    sidebar_width    : float = width_COPPERSIDEBARS,
-    sidebar_height   : float = height_COPPERSIDEBARS,
+    sidebar_width    : float = COPPER_SIDE_BAR_WIDTH,
+    sidebar_height   : float = COPPER_SIDE_BAR_HEIGHT,
     sizebar_current  : float = 0.0,
-    coil_factors     : jnp.ndarray = jnp.array([Bias_X_CoilFactor , Bias_Y_CoilFactor , Bias_Z_CoilFactor]),
-    coil_currents    : jnp.ndarray = jnp.array([Bias_X_CoilCurrent, Bias_Y_CoilCurrent, Bias_Z_CoilCurrent]),
-    stray_fields     : jnp.ndarray = jnp.array([Bias_X_StrayField , Bias_Y_StrayField , Bias_Z_StrayField]),
+    coil_factors     : jnp.ndarray = jnp.array([BIAS_X_COIL_FACTOR , BIAS_Y_COIL_FACTOR , BIAS_Z_COIL_FACTOR]),
+    coil_currents    : jnp.ndarray = jnp.array([BIAS_X_COIL_CURRENT, BIAS_Y_COIL_CURRENT, BIAS_Z_COIL_CURRENT]),
+    stray_fields     : jnp.ndarray = jnp.array([BIAS_X_STRAY_FIELD , BIAS_Y_STRAY_FIELD , BIAS_Z_STRAY_FIELD]),
 ) -> ac.AtomChip:
     # offsets
     copper_z_offset = -(pcb_height + copper_z_gap)

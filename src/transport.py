@@ -10,81 +10,81 @@ import atom_chip as ac
 # PCB
 #-------------------------------------------------------------
 
-GlassThickness        : float = 0.0   # 0.045; 0.1094; Half-wave plate thickness
-height_PCBLAYERTOP    : float = 0.07  # PCB Top Layer tickness (2 oz copper)
-PCBCoreThickness      : float = 0.38  # 0.42; %0.38;
-height_PCBLAYERBOTTOM : float = 0.07  # PCB Bottom Layer tickness (2 oz copper)
-PCB_Yoffset           : float = 0.0
-PCB_Xoffset           : float = 0.0
-PCBtop_offset         : float = 0.0   # PCB top layer vertical offset from reflecting surface (after QWP fell)
+GLASS_HEIGHT            : float = 0.0   # 0.045; 0.1094; Half-wave plate thickness
+PCB_LAYER_TOP_HEIGHT    : float = 0.07  # PCB Top Layer tickness (2 oz copper)
+PCB_CORE_HEIGHT         : float = 0.38  # 0.42; %0.38;
+PCB_LAYER_BOTTOM_HEIGHT : float = 0.07  # PCB Bottom Layer tickness (2 oz copper)
+PCB_Y_OFFSET            : float = 0.0
+PCB_X_OFFSET            : float = 0.0
+PCB_TOP_OFFSET          : float = 0.0   # PCB top layer vertical offset from reflecting surface (after QWP fell)
 
 #-------------------------------------------------------------
 # Transport wires
 #-------------------------------------------------------------
-PCB_TrWireLengths     : float = 16.0  # Transport wire length
-PCB_TrWireWidth       : float = 0.3   # Transport wire width
-PCB_TrWireCurrents    : List[float] = [0.53, 0.89, -0.97, 0.89, 0.53, 0]  # transport wire current (A)
+PCB_TRANSPORT_WIRE_LENGTH   : float = 16.0  # Transport wire length
+PCB_TRANSPORT_WIRE_WIDTH    : float = 0.3   # Transport wire width
+PCB_TRANSPORT_WIRE_CURRENTS : List[float] = [0.53, 0.89, -0.97, 0.89, 0.53, 0]  # transport wire current (A)
 
 #-------------------------------------------------------------
 # Quadrupole wires
 #-------------------------------------------------------------
-PCB_QuadWireLengths   : float = 62.0  # Quadrupole wire half length
-PCBpinL               : float = 50.0  # PCB pin length (leg length)
-Q0                    : float = -3.7  # central quadrupole wire current (A)
-Q1                    : float = 13.8  # outer quadrupole wire current (A)
-PCB_QuadWireCurrents  : List[float] = [
-     0, # PCB Wire Q4
-    Q1, # PCB Wire Q3
-    Q1, # PCB Wire Q2
-    Q0, # PCB Wire Q1
-    Q0, # PCB Wire Q0
-    Q0, # PCB Wire Q1'
-    Q1, # PCB Wire Q2'
-    Q1, # PCB Wire Q3'
-     0, # PCB Wire Q4'
+PCB_QUADRUPOLE_WIRE_LENGTH    : float = 62.0  # Quadrupole wire half length
+PBC_PIN_LENGTH                : float = 50.0  # PCB pin length (leg length)
+PCB_QUADRUPOLE_WIRE_CURRENT_0 : float = -3.7  # central quadrupole wire current (A)
+PCB_QUADRUPOLE_WIRE_CURRENT_1 : float = 13.8  # outer quadrupole wire current (A)
+PCB_QUADRUPOLE_WIRE_CURRENTS  : List[float] = [
+                                0, # PCB Wire Q4
+    PCB_QUADRUPOLE_WIRE_CURRENT_1, # PCB Wire Q3
+    PCB_QUADRUPOLE_WIRE_CURRENT_1, # PCB Wire Q2
+    PCB_QUADRUPOLE_WIRE_CURRENT_0, # PCB Wire Q1
+    PCB_QUADRUPOLE_WIRE_CURRENT_0, # PCB Wire Q0
+    PCB_QUADRUPOLE_WIRE_CURRENT_0, # PCB Wire Q1'
+    PCB_QUADRUPOLE_WIRE_CURRENT_1, # PCB Wire Q2'
+    PCB_QUADRUPOLE_WIRE_CURRENT_1, # PCB Wire Q3'
+                                0, # PCB Wire Q4'
 ]
 
 #-------------------------------------------------------------
 # Bias fields
 #-------------------------------------------------------------
 # Coil Current [A] to Field [G] Conversion:
-Bias_X_CoilFactor  : float = -1.068  # [G/A]
-Bias_Y_CoilFactor  : float =  1.8    # [G/A]
-Bias_Z_CoilFactor  : float =  3.0    # [G/A]
+BIAS_X_COIL_FACTOR  : float = -1.068  # [G/A]
+BIAS_Y_COIL_FACTOR  : float =  1.8    # [G/A]
+BIAS_Z_COIL_FACTOR  : float =  3.0    # [G/A]
 
 # Coil currents [A] to be applied to the external coils
-Bias_X_CoilCurrent : float = 0.0
-Bias_Y_CoilCurrent : float = 0.0
-Bias_Z_CoilCurrent : float = 0.0
+BIAS_X_COIL_CURRENT : float = 0.0
+BIAS_Y_COIL_CURRENT : float = 0.0
+BIAS_Z_COIL_CURRENT : float = 0.0
 
 # PCB stray fields (G)
-Bias_X_StrayField  : float = 1.0
-Bias_Y_StrayField  : float = 1.0
-Bias_Z_StrayField  : float = 0.0
+BIAS_X_STRAY_FIELD  : float = 1.0
+BIAS_Y_STRAY_FIELD  : float = 1.0
+BIAS_Z_STRAY_FIELD  : float = 0.0
 
 
 # Define the PCB atom chip
 def build_atom_chip(
     # PCB properties
-    top_height              : float = height_PCBLAYERTOP,
-    bottom_height           : float = height_PCBLAYERBOTTOM,
-    x_offset                : float = PCB_Xoffset,
-    y_offset                : float = PCB_Yoffset,
-    top_offset              : float = -(GlassThickness + PCBtop_offset + height_PCBLAYERTOP / 2),
-    bottom_offset           : float = -(GlassThickness + PCBtop_offset + height_PCBLAYERTOP +
-                                      PCBCoreThickness + height_PCBLAYERBOTTOM / 2),
-    pcb_pin_length          : float = PCBpinL,
+    top_height              : float = PCB_LAYER_TOP_HEIGHT,
+    bottom_height           : float = PCB_LAYER_BOTTOM_HEIGHT,
+    x_offset                : float = PCB_X_OFFSET,
+    y_offset                : float = PCB_Y_OFFSET,
+    top_offset              : float = -(GLASS_HEIGHT + PCB_TOP_OFFSET + PCB_LAYER_TOP_HEIGHT / 2),
+    bottom_offset           : float = -(GLASS_HEIGHT + PCB_TOP_OFFSET + PCB_LAYER_TOP_HEIGHT +
+                                      PCB_CORE_HEIGHT + PCB_LAYER_BOTTOM_HEIGHT / 2),
+    pcb_pin_length          : float = PBC_PIN_LENGTH,
     # Transport wire properties
-    transport_wire_length   : float = PCB_TrWireLengths,
-    transport_wire_width    : float = PCB_TrWireWidth,
-    transport_wire_currents : List[float] = PCB_TrWireCurrents,
+    transport_wire_length   : float = PCB_TRANSPORT_WIRE_LENGTH,
+    transport_wire_width    : float = PCB_TRANSPORT_WIRE_WIDTH,
+    transport_wire_currents : List[float] = PCB_TRANSPORT_WIRE_CURRENTS,
     # Quadrupole wire properties
-    quadrupole_wire_length  : float = PCB_QuadWireLengths,
-    quadrupole_wire_currents: List[float] = PCB_QuadWireCurrents,
+    quadrupole_wire_length  : float = PCB_QUADRUPOLE_WIRE_LENGTH,
+    quadrupole_wire_currents: List[float] = PCB_QUADRUPOLE_WIRE_CURRENTS,
     # Bias field properties
-    coil_factors            : jnp.ndarray = jnp.array([Bias_X_CoilFactor , Bias_Y_CoilFactor , Bias_Z_CoilFactor]),
-    coil_currents           : jnp.ndarray = jnp.array([Bias_X_CoilCurrent, Bias_Y_CoilCurrent, Bias_Z_CoilCurrent]),
-    stray_fields            : jnp.ndarray = jnp.array([Bias_X_StrayField , Bias_Y_StrayField , Bias_Z_StrayField]),
+    coil_factors            : jnp.ndarray = jnp.array([BIAS_X_COIL_FACTOR , BIAS_Y_COIL_FACTOR , BIAS_Z_COIL_FACTOR]),
+    coil_currents           : jnp.ndarray = jnp.array([BIAS_X_COIL_CURRENT, BIAS_Y_COIL_CURRENT, BIAS_Z_COIL_CURRENT]),
+    stray_fields            : jnp.ndarray = jnp.array([BIAS_X_STRAY_FIELD , BIAS_Y_STRAY_FIELD , BIAS_Z_STRAY_FIELD]),
 ) -> ac.AtomChip:
     # Transport wire length, width, and height
     TL = transport_wire_length / 2  # half length
@@ -267,7 +267,7 @@ def build_atom_chip(
     )
 
     atom_chip = ac.AtomChip(
-        name        = "PCB Oyster",
+        name        = "PCB Transport",
         atom        = ac.rb87,
         components  = pcblayer_top + pcblayer_bottom,
         bias_fields = bias_fields,
@@ -313,7 +313,7 @@ def main():
 
     # Save the atom chip layout to a JSON file
     directory = os.path.dirname(__file__)
-    atom_chip.save(os.path.join(directory, "oyster.json"))
+    atom_chip.save(os.path.join(directory, "transport.json"))
 
     # Perform the visualization
     ac.visualization.show(atom_chip, analysis, os.path.join(directory, "visualization.yaml"))
