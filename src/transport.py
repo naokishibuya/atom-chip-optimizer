@@ -91,7 +91,7 @@ def build_atom_chip(
     TW = transport_wire_width       # width
     TH = top_height                 # height
 
-    wireCoords_PCBLAYERTOP = [
+    transport_wires = [
         # [[start point], [end point], width, height]
         # left-most period:
         [[-5.6,  -TL-1.2,  0], [-5.6, TL-1.2,  0], TW, TH],   # WIRE T1
@@ -130,7 +130,7 @@ def build_atom_chip(
         [[ 6.0,  -TL+1.3,  0], [ 6.0, TL+1.3,  0], TW, TH],   # WIRE T6
     ]
 
-    for wire in wireCoords_PCBLAYERTOP:
+    for wire in transport_wires:
         # start
         wire[0][0] += x_offset
         wire[0][1] += y_offset
@@ -142,7 +142,7 @@ def build_atom_chip(
 
     # transport wire currents (A)
     transport_wire_currents_reversed = [-i for i in transport_wire_currents]
-    I_PCBLAYERTOP = (
+    transport_wire_currents_repeated = (
         transport_wire_currents +
         transport_wire_currents_reversed +
         transport_wire_currents +
@@ -152,7 +152,7 @@ def build_atom_chip(
 
     # Define the PCB top layer transport wires
     pcblayer_top = []
-    for wire, current in zip(wireCoords_PCBLAYERTOP, I_PCBLAYERTOP):
+    for wire, current in zip(transport_wires, transport_wire_currents_repeated):
         pcblayer_top.append(
             ac.components.RectangularConductor.create(
                 material = "gold",
@@ -162,7 +162,7 @@ def build_atom_chip(
         )
 
     #----------------------------------------------------------
-    # PBC Bottom Layer
+    # PBC Bottom Layer (Quadrupole wires)
     #----------------------------------------------------------
 
     # Quadrupole wire length and height
@@ -173,7 +173,7 @@ def build_atom_chip(
     PL = pcb_pin_length
 
     # [[start point], [end point], width, height]
-    wireCoords_PCBLAYERBOTTOM = [[
+    quadrupole_wires = [[
         # WIRE Q4
         [[-QL             ,  4.9              ,   0], [ QL             ,  4.9              ,   0], 1.5, QH], # bar
     ], [  
@@ -236,7 +236,7 @@ def build_atom_chip(
         [[-QL             , -4.9              ,   0], [ QL             , -4.9              ,   0], 1.5, QH], # bar
     ]]
 
-    for wires in wireCoords_PCBLAYERBOTTOM:
+    for wires in quadrupole_wires:
         for wire in wires:
             # start
             wire[0][0] += x_offset
@@ -249,7 +249,7 @@ def build_atom_chip(
 
     # Define the PCB bottom layer quadrupole wires
     pcblayer_bottom = []
-    for i, wires in enumerate(wireCoords_PCBLAYERBOTTOM):
+    for i, wires in enumerate(quadrupole_wires):
         current = quadrupole_wire_currents[i]
         pcblayer_bottom.append(
             ac.components.RectangularConductor.create(
@@ -276,7 +276,7 @@ def build_atom_chip(
 # fmt: on
 
 
-def main():
+def trap_potential_analysis():
     # fmt: off
     options = ac.potential.AnalysisOptions(
         search = dict(
@@ -320,4 +320,4 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    trap_potential_analysis()
