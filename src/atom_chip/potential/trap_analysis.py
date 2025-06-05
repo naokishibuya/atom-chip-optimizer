@@ -30,7 +30,7 @@ import jax
 import jax.numpy as jnp
 from jax.tree_util import register_dataclass
 from . import constants
-from .atom import Atom
+from .atom import Atom, magnetic_moment
 from .minimum import search_minimum, MinimumResult
 from .hessian import hessian_at_minimum, Hessian
 
@@ -167,7 +167,7 @@ def analyze_field(
     logger.debug(hessian.matrix)
 
     # Step 3: Trap Frequencies (1e-4 for conversion from G to T)
-    eigenvalues = atom.mu * hessian.eigenvalues * 1e-4  # don't modify the hessian matrix!
+    eigenvalues = magnetic_moment(atom) * hessian.eigenvalues * 1e-4  # don't modify the hessian matrix!
     trap = trap_frequencies(eigenvalues, atom.mass)
     logger.info(f"Trap frequencies (Hz) : {trap.frequency}")
 
@@ -308,7 +308,7 @@ def larmor_frequency(atom: Atom, B_mag: jnp.ndarray) -> Frequency:
     """
     # B_mag is in [G]: convert to [T] by 1e-4
     # mu B_mag is in [J/T] where mu = gF mF muB
-    angular = atom.mu * B_mag * 1e-4 / constants.hbar
+    angular = magnetic_moment(atom) * B_mag * 1e-4 / constants.hbar
     frequency = angular / (2 * jnp.pi)
     return Frequency(frequency, angular)
 

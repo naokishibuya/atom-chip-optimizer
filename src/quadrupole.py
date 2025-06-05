@@ -341,8 +341,8 @@ def main():
     currents, centers = calculate_quadrupole_currents(g=g, z0=z0)
 
     # Estimate the gravitational effects
-    geq_f = ac.rb87.gravity_equivalent_field(z0)
-    geq_p = ac.rb87.gravity_equivalent_potential(z0)
+    geq_f = ac.atom.gravity_equivalent_field(ac.rb87, z0)
+    geq_p = ac.atom.gravity_equivalent_potential(ac.rb87, z0)
     geq_μK = ac.constants.joule_to_microKelvin(geq_p)
     print(f"Gravity equivalent field: {geq_f:.2g} G")
     print(f"Gravity equivalent energy: {geq_p:.2g} J")
@@ -380,9 +380,9 @@ def main():
             ),
         ),
         hessian = dict(
-            method = "jax",
-            # method = "finite-difference",
-            # hessian_step = 1e-5,  # Step size for Hessian calculation
+            #method = "jax",
+            method = "finite-difference",
+            hessian_step = 1e-5,  # Step size for Hessian calculation
         ),
         # for the trap analayis (not used for field analysis)
         total_atoms=1e5,

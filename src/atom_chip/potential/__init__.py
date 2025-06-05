@@ -1,5 +1,5 @@
-from . import constants
-from .atom import Atom, rb87
+from . import atom, constants
+from .atom import Atom, rb87, trap_potential_energy
 from .hessian import Hessian, hessian_at_minimum, hessian_by_jax, hessian_by_finite_difference
 from .minimum import MinimumResult, search_minimum
 from .trap_analysis import (
@@ -15,9 +15,11 @@ from .trap_analysis import (
 )
 
 __all__ = [
+    "atom",
     "constants",
     "Atom",
     "rb87",
+    "trap_potential_energy",
     "MinimumResult",
     "search_minimum",
     "Hessian",

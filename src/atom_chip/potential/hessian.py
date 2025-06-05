@@ -1,17 +1,13 @@
-from dataclasses import dataclass, field
-from typing import Callable
+from typing import Callable, NamedTuple
 import jax
 import jax.numpy as jnp
-from jax.tree_util import register_dataclass
 
 
 # fmt: off
-@register_dataclass
-@dataclass
-class Hessian:
-    eigenvalues : jnp.ndarray = field(default_factory=lambda: jnp.array([]))
-    eigenvectors: jnp.ndarray = field(default_factory=lambda: jnp.array([]))
-    matrix      : jnp.ndarray = field(default_factory=lambda: jnp.array([]))
+class Hessian(NamedTuple):
+    eigenvalues : jnp.ndarray
+    eigenvectors: jnp.ndarray
+    matrix      : jnp.ndarray
 # fmt: on
 
 
