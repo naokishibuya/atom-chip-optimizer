@@ -1,38 +1,61 @@
 from typing import List
 import matplotlib.pyplot as plt
 from PyQt5.QtWidgets import QApplication
-import jax
 import jax.numpy as jnp
 import atom_chip as ac
-from . import builder, planner
+from .scheduler import ScheduleFn
+from .metrics import simulate_trap_dynamics
 
 
 def show(
-    positions: jnp.ndarray,
-    desired_r: jnp.ndarray,
-    I_schedule: jnp.ndarray,
-    depths: jnp.ndarray,
-    frequencies: jnp.ndarray,
-    search_grid: jnp.ndarray,
+    initial_trap_trajectory: jnp.ndarray,
+    trap_trajectory: jnp.ndarray,
+    anchor_currents: jnp.ndarray,
+    wire_config: ac.atom_chip.WireConfig,
+    bias_config: ac.field.BiasFieldConfig,
+    schedule_fn: ScheduleFn,
+    losses: dict[str, list[float]],
 ):
+    # This uses the optimized currents and trajectory
+    I_schedule, U0s, omegas = simulate_trap_dynamics(
+        atom=ac.rb87,
+        wire_config=wire_config,
+        bias_config=bias_config,
+        anchor_currents=anchor_currents,
+        schedule_fn=schedule_fn,
+        trap_trajectory=trap_trajectory,
+    )
+
     # Plot the results using the given current schedule
     figs = []
-    figs.append(plot_trap_positions(positions, desired_r))
+    figs.append(plot_anchor_currents(anchor_currents))
+    figs.append(plot_trajectory(trap_trajectory))
+    figs.append(plot_trap_positions(initial_trap_trajectory, trap_trajectory))
+    figs.append(plot_trap_dynamics(U0s))
+    figs.append(plot_trap_frequencies(omegas))
     figs.append(plot_current_schedule(I_schedule))
-    figs.append(plot_trap_depths(depths))
-    # figs.append(plot_trap_frequencies(frequencies))
-    # figs.append(plot_potential_3d_along_trajectory(I_schedule, positions, search_grid))
-    # figs.append(plot_trajectory_xy(I_schedule, positions, width=1e-2, resolution=40, every=5))
+    figs.append(plot_loss_components(losses))
     adjust_plot_positions(figs)
     input("Press Enter to close the plots...")
 
 
+def plot_trajectory(trap_trajectory: jnp.ndarray):
+    fig = plt.figure()
+    ax = fig.add_subplot(111, projection="3d")
+    ax.plot(*trap_trajectory.T, marker=".")
+    ax.set_xlabel("x (m)")
+    ax.set_ylabel("y (m)")
+    ax.set_zlabel("z (m)")
+    ax.set_title("Optimized Trap Trajectory")
+    return fig
+
+
 # Plot the actual and desired trap positions over time
-def plot_trap_positions(positions, desired):
+def plot_trap_positions(initial_trap_trajectory: jnp.ndarray, trap_trajectory: jnp.ndarray):
     fig, axs = plt.subplots(3, 1, figsize=(10, 6), sharex=True)
     for i, label in enumerate(["x", "y", "z"]):
-        axs[i].plot(positions[:, i], label="Actual", color="blue")
-        axs[i].plot(desired[:, i], "--", label="Desired", color="green")
+        axs[i].plot(trap_trajectory[:, i], label="Actual", color="blue")
+        axs[i].plot(initial_trap_trajectory[:, i], "--", label="Desired", color="green")
         axs[i].set_ylabel(label + " (mm)")
         axs[i].legend()
         axs[i].grid()
@@ -41,44 +64,31 @@ def plot_trap_positions(positions, desired):
     return fig
 
 
-# Plot current schedules for shifting and guiding wires
-def plot_current_schedule(I_schedule):
-    fig, axes = plt.subplots(4, 1, figsize=(10, 8), sharex=True)
-    for k, ax in enumerate(axes):
-        if k == 0:
-            for i in range(planner.NUM_SHIFTING_WIRES):
-                ax.plot(I_schedule[i], label=f"Shifting Wire {i}")
-            ax.set_title("Shifting Currents")
-        else:
-            wire_range = [[1, 2, 6, 7], [3, 4, 5], [0, 8]][k - 1]
-            for i in wire_range:
-                ax.plot(I_schedule[planner.NUM_SHIFTING_WIRES + i], label=f"Guiding Wire {i}")
-            ax.set_title(f"Guiding Currents {wire_range}")
-        ax.legend(loc="upper left", bbox_to_anchor=(1.01, 1.0))
-        ax.set_xlabel("Step")
-        ax.set_ylabel("Current (A)")
-        ax.grid()
-
-    plt.tight_layout()
-    plt.subplots_adjust(right=0.8)  # leave space for legend
+def plot_anchor_currents(anchor_currents: jnp.ndarray):
+    fig = plt.figure()
+    for i in range(anchor_currents.shape[1]):
+        plt.plot(anchor_currents[:, i], label=f"Wire {i}")
+    plt.title("Optimized Anchor Currents per Wire")
+    plt.xlabel("Anchor Index")
+    plt.ylabel("Current (A)")
+    plt.legend(ncol=3, fontsize=6)
     return fig
 
 
-def plot_trap_depths(depths):
-    # Plot U0 (trap depth)
-    fig = plt.figure(figsize=(8, 4))
-    plt.plot(depths)
-    plt.xlabel("Step")
-    plt.ylabel("Trap Minimum $U_0$")
-    plt.title("Trap Depth Over Transport")
-    plt.grid()
+def plot_trap_dynamics(U0s: jnp.ndarray):
+    fig = plt.figure()
+    plt.plot(U0s * 1e30)  # Convert to x10^-30 J for readability
+    plt.xlabel("Time Step")
+    plt.ylabel("Trap Energy $U_0$ [$10^{-30}$ J]")
+    plt.title("Trap Potential Energy Over Time")
+    plt.grid(True)
     plt.tight_layout()
     return fig
 
 
 def plot_trap_frequencies(frequencies):
     fig, ax = plt.subplots(figsize=(10, 4))
-    steps = jnp.arange(planner.NUM_STEPS + 1)
+    steps = jnp.arange(frequencies.shape[0])
     labels = ["$\\omega_x$", "$\\omega_y$", "$\\omega_z$"]
     for i in range(3):
         ax.plot(steps, frequencies[:, i], label=labels[i])
@@ -91,95 +101,58 @@ def plot_trap_frequencies(frequencies):
     return fig
 
 
-def plot_potential_3d_along_trajectory(I_schedule, positions, search_grid):
-    all_U0, all_points = [], []
-    for step in range(planner.NUM_STEPS + 1):
-        # Build the atom chip for the current step
-        currents = I_schedule[:, step]
-        atom_chip = builder.build_atom_chip(
-            planner.SHIFTING_WIRES,
-            currents[: planner.NUM_SHIFTING_WIRES],
-            planner.GUIDING_WIRES,
-            currents[planner.NUM_SHIFTING_WIRES :],
-            planner.BIAS_FIELDS,
-        )
+def plot_current_schedule(I_schedule: jnp.ndarray):
+    """
+    Plot time-dependent wire currents for shifting and guiding wires.
+    Args:
+        I_schedule: shape (n_steps, n_wires)
+    """
+    I_schedule = jnp.asarray(I_schedule)  # ensure it’s not a tracer
+    I_np = jnp.array(I_schedule).T  # shape: (n_wires, n_steps)
 
-        # Evaluate the trap position and potential energy at the search grid
-        center = positions[step]
-        grid_points = center + search_grid
-        Us = jax.vmap(atom_chip.potential_energy)(grid_points)
-        all_U0.append(Us)
-        all_points.append(grid_points)
+    fig, axes = plt.subplots(4, 1, figsize=(10, 8), sharex=True)
 
-    # Convert lists to arrays
-    all_U0 = jnp.concatenate(all_U0)  # shape (N_total,)
-    all_points = jnp.vstack(all_points)  # shape (N_total, 3)
-    x, y, z = all_points.T
+    # Panel 1: shifting wires (first 6)
+    NUM_SHIFTING_WIRES = 6
+    ax = axes[0]
+    for i in range(NUM_SHIFTING_WIRES):
+        ax.plot(I_np[i], label=f"Shift {i}")
+    ax.set_title("Shifting Wire Currents")
+    ax.legend(loc="upper left", bbox_to_anchor=(1.01, 1.0))
+    ax.set_ylabel("Current (A)")
+    ax.grid()
 
-    # Sort the points by potential energy for better visualization
-    sort_idx = jnp.argsort(all_U0)
-    x, y, z, all_U0 = x[sort_idx], y[sort_idx], z[sort_idx], all_U0[sort_idx]
+    # Panels 2–4: guiding wire subsets
+    guiding_indices = [[1, 2, 6, 7], [3, 4, 5], [0, 8]]
+    for k, group in enumerate(guiding_indices):
+        ax = axes[k + 1]
+        for i in group:
+            idx = NUM_SHIFTING_WIRES + i
+            ax.plot(I_np[idx], label=f"Guide {i}")
+        ax.set_title(f"Guiding Wires: {group}")
+        ax.legend(loc="upper left", bbox_to_anchor=(1.01, 1.0))
+        ax.set_ylabel("Current (A)")
+        ax.grid()
 
-    all_U0 = jnp.vectorize(ac.constants.joule_to_microKelvin)(all_U0)
-
-    # Plot
-    fig = plt.figure(figsize=(10, 6))
-    ax = fig.add_subplot(111, projection="3d")
-    # Plot the trap path
-    ax.plot(positions[:, 0], positions[:, 1], positions[:, 2], "k-", linewidth=1.5, label="Trap path")
-    ax.scatter(positions[:, 0], positions[:, 1], positions[:, 2], color="black", s=5)
-    # Scatter plot of the potential energy along the path
-    sc = ax.scatter(x, y, z, c=all_U0, cmap="jet", s=3)
-    fig.colorbar(sc, ax=ax, shrink=0.6, label="Potential Energy ($\\mu$K)")
-    ax.set_xlabel("x (mm)")
-    ax.set_ylabel("y (mm)")
-    ax.set_zlabel("z (mm)")
-    ax.set_xlim(x.min(), x.max())
-    ax.set_ylim(y.min(), y.max())
-    ax.set_zlim(z.min(), z.max())
-    ax.set_title("Magnetic Potential Along Transport Path")
+    axes[-1].set_xlabel("Time Step")
     plt.tight_layout()
+    plt.subplots_adjust(right=0.8)
     return fig
 
 
-def plot_trajectory_xy(I_schedule, positions, width=1e-2, resolution=40, every=5):
-    """
-    Plots a sequence of x-y contours along the trajectory at every `every` steps.
-    """
-    fig, ax = plt.subplots(figsize=(10, 6))
-    for step in range(0, planner.NUM_STEPS + 1, every):
-        r0 = positions[step]
-        currents = I_schedule[:, step]
-        atom_chip = builder.build_atom_chip(
-            planner.SHIFTING_WIRES,
-            currents[: planner.NUM_SHIFTING_WIRES],
-            planner.GUIDING_WIRES,
-            currents[planner.NUM_SHIFTING_WIRES :],
-            planner.BIAS_FIELDS,
-        )
+def plot_loss_components(all_losses: dict[str, list[float]]):
+    n = len(all_losses)
+    ncols = 4
+    nrows = n // 4 + (n % 4 > 0)
+    fig, axes = plt.subplots(nrows, ncols, figsize=(15, 10), sharex=True)
 
-        lin = jnp.linspace(-width / 2, width / 2, resolution)
-        dx, dy = jnp.meshgrid(lin, lin, indexing="ij")
-        dz = jnp.zeros_like(dx)
+    for i, (key, values) in enumerate(all_losses.items()):
+        ax = axes[i // ncols, i % ncols]
+        ax.plot(values)
+        ax.set_ylabel(key)
+        ax.grid(True)
 
-        grid = jnp.stack([dx.ravel(), dy.ravel(), dz.ravel()], axis=-1)
-        grid_points = grid + r0
-
-        Us = jax.vmap(atom_chip.potential_energy)(grid_points)
-        U_grid = Us.reshape(resolution, resolution)
-
-        # Draw contours
-        levels = jnp.linspace(jnp.min(U_grid), jnp.max(U_grid), 10)
-        ax.contour((dx + r0[0]) * 1e3, (dy + r0[1]) * 1e3, U_grid, levels=levels, alpha=0.6, cmap="viridis")
-
-        # Mark trap position
-        ax.plot(r0[0] * 1e3, r0[1] * 1e3, "rx", markersize=4)
-
-    ax.set_title("x–y Potential Contours Along Transport Path")
-    ax.set_xlabel("x (mm)")
-    ax.set_ylabel("y (mm)")
-    ax.axis("equal")
-    ax.grid(True)
+    fig.suptitle("Loss Components Over Optimization Steps", fontsize=12)
     plt.tight_layout()
     return fig
 

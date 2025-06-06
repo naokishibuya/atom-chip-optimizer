@@ -6,12 +6,12 @@ import json
 import time
 import jax.numpy as jnp
 from .components import RectangularConductor, RectangularSegment
-from .field import BiasFields, BiasFieldParams, get_bias_fields, biot_savart_rectangular, ZERO_BIAS_FIELD
+from .field import BiasFields, BiasFieldConfig, get_bias_fields, biot_savart_rectangular, ZERO_BIAS_FIELD
 from .potential import Atom, AnalysisOptions, FieldAnalysis, PotentialAnalysis
 from .potential import trap_potential_energy, analyze_field, analyze_trap
 
 
-class AtomChipWires(NamedTuple):
+class WireConfig(NamedTuple):
     starts: jnp.ndarray  # shape (n_wires, 3)
     ends: jnp.ndarray  # shape (n_wires, 3)
     widths: jnp.ndarray  # shape (n_wires,)
@@ -20,7 +20,7 @@ class AtomChipWires(NamedTuple):
 
 @jax.jit
 def trap_magnetic_fields(
-    points: jnp.ndarray, wires: AtomChipWires, currents: jnp.ndarray, bias: BiasFieldParams
+    points: jnp.ndarray, wires: WireConfig, currents: jnp.ndarray, bias: BiasFieldConfig
 ) -> Tuple[jnp.ndarray, jnp.ndarray]:
     """
     Compute the magnetic field at given points in space.
@@ -38,7 +38,7 @@ def trap_magnetic_fields(
 
 @jax.jit
 def trap_potential_energies(
-    points: jnp.ndarray, atom: Atom, wires: AtomChipWires, currents: jnp.ndarray, bias: BiasFieldParams
+    points: jnp.ndarray, atom: Atom, wires: WireConfig, currents: jnp.ndarray, bias: BiasFieldConfig
 ):
     """
     Compute the potential energy at given points in space.
@@ -74,13 +74,13 @@ class AtomChip:
         points = jnp.atleast_2d(points).astype(jnp.float64)
         wires = atom_chip_components_to_wires(self.components)
         currents = atom_chip_components_to_currents(self.components)
-        return trap_magnetic_fields(points, wires, currents, self.bias_fields.params)
+        return trap_magnetic_fields(points, wires, currents, self.bias_fields.config)
 
     def get_potentials(self, points: jnp.array) -> jnp.ndarray:
         points = jnp.atleast_2d(points).astype(jnp.float64)
         wires = atom_chip_components_to_wires(self.components)
         currents = atom_chip_components_to_currents(self.components)
-        return trap_potential_energies(points, self.atom, wires, currents, self.bias_fields.params)
+        return trap_potential_energies(points, self.atom, wires, currents, self.bias_fields.config)
 
     def analyze(self, options: AnalysisOptions) -> AtomChipAnalysis:
         logging.info(f"Bias fields: {self.bias_fields.to_dict()}")
@@ -202,7 +202,7 @@ class AtomChip:
         )
 
 
-def atom_chip_components_to_wires(components: List[RectangularConductor]) -> AtomChipWires:
+def atom_chip_components_to_wires(components: List[RectangularConductor]) -> WireConfig:
     # consolidate all the components into a single call to biot_savart_rectangular
     # to avoid multiple calls to JAX
     # fmt: off
@@ -211,7 +211,7 @@ def atom_chip_components_to_wires(components: List[RectangularConductor]) -> Ato
     widths   = jnp.concatenate([component.widths   for component in components])
     heights  = jnp.concatenate([component.heights  for component in components])
     # fmt: on
-    return AtomChipWires(starts, ends, widths, heights)
+    return WireConfig(starts, ends, widths, heights)
 
 
 def atom_chip_components_to_currents(components: List[RectangularConductor]) -> jnp.ndarray:
