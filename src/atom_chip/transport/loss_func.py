@@ -3,14 +3,14 @@ import jax.numpy as jnp
 import atom_chip as ac
 
 # from .scheduler import ScheduleFn
-from .metrics import simulate_trap_dynamics
+from atom_chip.transport import metrics
 
 
-# ---------- Spatial Stability Losses ----------
+# ---------- Energy/Spatial Stability Losses ----------
 
 
 @jax.jit
-def trap_depth_loss(U0s: jnp.ndarray, U0_ref: jnp.ndarray):
+def energy_minimum_loss(U0s: jnp.ndarray, U0_ref: jnp.ndarray):
     """Penalizes trap depth below a minimum threshold."""
     return jnp.sum(jnp.square((U0s / U0_ref) - 1.0))
 
@@ -26,22 +26,7 @@ def trap_frequency_loss(omegas: jnp.ndarray, omega_ref: jnp.ndarray):
     return jnp.sum(jnp.square((omegas / omega_ref) - 1.0))
 
 
-# ---------- Current Bound Losses ----------
-
-
-@jax.jit
-def current_bound_loss(currents: jnp.ndarray, I_max: jnp.ndarray):
-    """Penalizes currents that exceed the maximum allowed value."""
-    return jnp.sum(jnp.square(jnp.maximum(0.0, jnp.abs(currents) - I_max)))
-
-
 # ---------- Time-Dependent (Adiabatic) Losses ----------
-
-
-@jax.jit
-def velocity_loss(r0s: jnp.ndarray) -> jnp.ndarray:
-    diffs = r0s[1:] - r0s[:-1]
-    return jnp.mean(jnp.square(diffs[:, 0]))  # only x-axis smoothing
 
 
 @jax.jit
@@ -66,12 +51,11 @@ def total_loss_fn(
     I_schedule: jnp.ndarray,
     omega_ref: jnp.ndarray,
     U0_ref: jnp.ndarray,
-    I_max: jnp.ndarray,
     loss_weights: dict,
 ) -> jnp.ndarray:
     """Computes the weighted sum of all physics-informed loss components."""
 
-    U0s, omegas = simulate_trap_dynamics(
+    U0s, omegas = metrics.simulate_trap_dynamics(
         atom,
         wire_config,
         bias_config,
@@ -82,11 +66,9 @@ def total_loss_fn(
     # Compute losses
     # fmt: off
     losses = dict(
-        U     = trap_depth_loss(U0s, U0_ref),
+        U     = energy_minimum_loss(U0s, U0_ref),
         dU    = energy_smoothness_loss(U0s),
         freq  = trap_frequency_loss(omegas, omega_ref),
-        bound = current_bound_loss(I_schedule, I_max),
-        vel   = velocity_loss(trap_trajectory),
         dfreq = frequency_change_loss(omegas),
         jerk  = jerk_loss(I_schedule),
     )
