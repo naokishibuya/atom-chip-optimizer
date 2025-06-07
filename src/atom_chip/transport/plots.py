@@ -3,38 +3,34 @@ import matplotlib.pyplot as plt
 from PyQt5.QtWidgets import QApplication
 import jax.numpy as jnp
 import atom_chip as ac
-from .scheduler import ScheduleFn
 from .metrics import simulate_trap_dynamics
 
 
 def show(
-    initial_trap_trajectory: jnp.ndarray,
-    trap_trajectory: jnp.ndarray,
-    anchor_currents: jnp.ndarray,
     wire_config: ac.atom_chip.WireConfig,
     bias_config: ac.field.BiasFieldConfig,
-    schedule_fn: ScheduleFn,
-    losses: dict[str, list[float]],
+    trap_trajectory: jnp.ndarray,
+    I_schedule: jnp.ndarray,
+    loss_log: dict[str, list[float]],
 ):
     # This uses the optimized currents and trajectory
-    I_schedule, U0s, omegas = simulate_trap_dynamics(
+    U0s, omegas = simulate_trap_dynamics(
         atom=ac.rb87,
         wire_config=wire_config,
         bias_config=bias_config,
-        anchor_currents=anchor_currents,
-        schedule_fn=schedule_fn,
         trap_trajectory=trap_trajectory,
+        I_schedule=I_schedule,
     )
 
     # Plot the results using the given current schedule
     figs = []
-    figs.append(plot_anchor_currents(anchor_currents))
+    # figs.append(plot_anchor_currents(anchor_currents))
     figs.append(plot_trajectory(trap_trajectory))
-    figs.append(plot_trap_positions(initial_trap_trajectory, trap_trajectory))
+    # figs.append(plot_trap_positions(initial_trap_trajectory, trap_trajectory))
     figs.append(plot_trap_dynamics(U0s))
     figs.append(plot_trap_frequencies(omegas))
     figs.append(plot_current_schedule(I_schedule))
-    figs.append(plot_loss_components(losses))
+    figs.append(plot_loss_components(loss_log))
     adjust_plot_positions(figs)
     input("Press Enter to close the plots...")
 
@@ -140,13 +136,13 @@ def plot_current_schedule(I_schedule: jnp.ndarray):
     return fig
 
 
-def plot_loss_components(all_losses: dict[str, list[float]]):
-    n = len(all_losses)
+def plot_loss_components(loss_log: dict[str, list[float]]):
+    n = len(loss_log)
     ncols = 4
     nrows = n // 4 + (n % 4 > 0)
     fig, axes = plt.subplots(nrows, ncols, figsize=(15, 10), sharex=True)
 
-    for i, (key, values) in enumerate(all_losses.items()):
+    for i, (key, values) in enumerate(loss_log.items()):
         ax = axes[i // ncols, i % ncols]
         ax.plot(values)
         ax.set_ylabel(key)

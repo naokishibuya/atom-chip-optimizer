@@ -1,8 +1,8 @@
-from functools import partial
 import jax
 import jax.numpy as jnp
 import atom_chip as ac
-from .scheduler import ScheduleFn
+
+# from .scheduler import ScheduleFn
 from .metrics import simulate_trap_dynamics
 
 
@@ -57,14 +57,13 @@ def jerk_loss(I_schedule: jnp.ndarray) -> jnp.ndarray:
 
 
 # Total loss function that combines all components
-@partial(jax.jit, static_argnames=("schedule_fn",))
+@jax.jit
 def total_loss_fn(
     atom: ac.Atom,
     wire_config: ac.atom_chip.WireConfig,
     bias_config: ac.field.BiasFieldConfig,
-    anchor_currents: jnp.ndarray,
-    schedule_fn: ScheduleFn,
     trap_trajectory: jnp.ndarray,
+    I_schedule: jnp.ndarray,
     omega_ref: jnp.ndarray,
     U0_ref: jnp.ndarray,
     I_max: jnp.ndarray,
@@ -72,13 +71,12 @@ def total_loss_fn(
 ) -> jnp.ndarray:
     """Computes the weighted sum of all physics-informed loss components."""
 
-    I_schedule, U0s, omegas = simulate_trap_dynamics(
+    U0s, omegas = simulate_trap_dynamics(
         atom,
         wire_config,
         bias_config,
         trap_trajectory,
-        anchor_currents,
-        schedule_fn,
+        I_schedule,
     )
 
     # Compute losses

@@ -1,8 +1,7 @@
-from functools import partial
 import jax
 import jax.numpy as jnp
 import atom_chip as ac
-from .scheduler import ScheduleFn
+from atom_chip.transport import planner
 
 
 @jax.jit
@@ -33,25 +32,27 @@ def evaluate_trap(
     return U0, omega
 
 
-@partial(jax.jit, static_argnames=("schedule_fn",))
+# @jax.jit
 def simulate_trap_dynamics(
     atom: ac.Atom,
     wire_config: ac.atom_chip.WireConfig,
     bias_config: ac.field.BiasFieldConfig,
     trap_trajectory: jnp.ndarray,
-    anchor_currents: jnp.ndarray,
-    schedule_fn: ScheduleFn,
-) -> tuple[jnp.ndarray, jnp.ndarray, jnp.ndarray, jnp.ndarray]:
+    I_schedule: jnp.ndarray,
+) -> tuple[jnp.ndarray, jnp.ndarray, jnp.ndarray]:
     """
-    Generates a full schedule of trap parameters (I_schedule, r0, U0, omega)
-    by applying the schedule_fn to anchor_currents and evaluating the trap at each step.
+    Simulate the trap dynamics over a trajectory given a schedule of wire currents.
     """
-    # Generate the current schedule
-    I_schedule = schedule_fn(trap_trajectory, anchor_currents)
 
     def eval_step(wire_currents: jnp.ndarray, trap_position: jnp.ndarray):
         return evaluate_trap(atom, wire_config, bias_config, wire_currents, trap_position)
 
-    U0s, omegas = jax.vmap(eval_step)(I_schedule, trap_trajectory)
+    wire_currents = jax.vmap(
+        planner.calculate_wire_currents, in_axes=(0, 0)
+    )(
+        I_schedule[:, :6],  # shape (n_steps, 6) shifting wires
+        I_schedule[:, 6:],  # shape (n_steps, 9) guiding wires
+    )
 
-    return I_schedule, U0s, omegas
+    U0s, omegas = jax.vmap(eval_step)(wire_currents, trap_trajectory)
+    return U0s, omegas

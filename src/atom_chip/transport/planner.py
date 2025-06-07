@@ -1,6 +1,55 @@
+import jax
 import jax.numpy as jnp
+import flax.linen as nn
 import atom_chip as ac
 from . import builder
+
+
+SHIFTING_WIRES, GUIDING_WIRES = builder.setup_wire_layout()
+GUIDING_WIRE_SEGMENT_COUNTS = jnp.array([len(wire) for wire in GUIDING_WIRES], dtype=jnp.int32)
+
+
+def setup_wire_config() -> ac.atom_chip.WireConfig:
+    """
+    Build the wire configuration for the atom chip.
+    """
+    starts = []
+    ends = []
+    widths = []
+    heights = []
+
+    # Collect segments for shifting and guiding wires
+    for segment in SHIFTING_WIRES:
+        s, e, w, h = segment
+        starts.append(jnp.array(s, dtype=jnp.float64))
+        ends.append(jnp.array(e, dtype=jnp.float64))
+        widths.append(jnp.array(w, dtype=jnp.float64))
+        heights.append(jnp.array(h, dtype=jnp.float64))
+
+    for wire in GUIDING_WIRES:
+        for segment in wire:
+            s, e, w, h = segment
+            starts.append(jnp.array(s, dtype=jnp.float64))
+            ends.append(jnp.array(e, dtype=jnp.float64))
+            widths.append(jnp.array(w, dtype=jnp.float64))
+            heights.append(jnp.array(h, dtype=jnp.float64))
+
+    # Convert to WireConfig
+    wire_config = ac.atom_chip.WireConfig(
+        starts=jnp.stack(starts),
+        ends=jnp.stack(ends),
+        widths=jnp.stack(widths),
+        heights=jnp.stack(heights),
+    )
+    return wire_config
+
+
+def setup_bias_config() -> ac.atom_chip.BiasFieldConfig:
+    """
+    Build the bias fields for the atom chip.
+    """
+    bias_fields = builder.make_bias_fields()
+    return bias_fields.config
 
 
 def generate_desired_positions(
@@ -20,72 +69,46 @@ def generate_desired_positions(
     return r0 + shift * jnp.array([1.0, 0.0, 0.0])
 
 
-def initialize_anchor_currents(initial_currents: jnp.ndarray, n_anchors: int) -> jnp.ndarray:
+@jax.jit
+def calculate_wire_currents(
+    I_shifting_wires: jnp.ndarray,  # shape: (6,)
+    I_guiding_wires: jnp.ndarray,  # shape: (9,)
+) -> jnp.ndarray:
     """
-    Uniformly duplicate the initial wire currents across anchor points.
+    Expands 6 shifting and 9 guiding wires into full 73-element current vector.
     """
-    return jnp.tile(initial_currents[None, :], (n_anchors, 1))
-
-
-def setup_wire_config() -> ac.atom_chip.WireConfig:
-    """
-    Build the wire configuration for the atom chip.
-    """
-    starts = []
-    ends = []
-    widths = []
-    heights = []
-
-    # Collect segments for shifting and guiding wires
-    shifting_wires, guiding_wires = builder.setup_wire_layout()
-
-    for segment in shifting_wires:
-        s, e, w, h = segment
-        starts.append(jnp.array(s, dtype=jnp.float64))
-        ends.append(jnp.array(e, dtype=jnp.float64))
-        widths.append(jnp.array(w, dtype=jnp.float64))
-        heights.append(jnp.array(h, dtype=jnp.float64))
-
-    for wire in guiding_wires:
-        for segment in wire:
-            s, e, w, h = segment
-            starts.append(jnp.array(s, dtype=jnp.float64))
-            ends.append(jnp.array(e, dtype=jnp.float64))
-            widths.append(jnp.array(w, dtype=jnp.float64))
-            heights.append(jnp.array(h, dtype=jnp.float64))
-
-    # Convert to WireConfig
-    wire_config = ac.atom_chip.WireConfig(
-        starts=jnp.stack(starts),
-        ends=jnp.stack(ends),
-        widths=jnp.stack(widths),
-        heights=jnp.stack(heights),
-    )
-
-    # Convert lists to JAX arrays
-    i_shifting_wires = jnp.array(builder.SHIFTING_WIRE_CURRENTS, dtype=jnp.float64)
+    # Expand shifting wires
     total_shifting = jnp.concatenate(
-        [
-            i_shifting_wires,
-            -i_shifting_wires,
-            i_shifting_wires,
-            -i_shifting_wires,
-            i_shifting_wires,
-        ]
+        [I_shifting_wires, -I_shifting_wires, I_shifting_wires, -I_shifting_wires, I_shifting_wires]
+    )  # (30,)
+
+    # Expand guiding wires
+    total_guiding = jnp.repeat(I_guiding_wires, GUIDING_WIRE_SEGMENT_COUNTS)  # (43,)
+
+    return jnp.concatenate([total_shifting, total_guiding])  # (73,)
+
+
+def calculate_initial_wire_currents() -> jnp.ndarray:
+    return calculate_wire_currents(
+        I_shifting_wires=jnp.array(builder.SHIFTING_WIRE_CURRENTS, dtype=jnp.float64),
+        I_guiding_wires=jnp.array(builder.GUIDING_WIRE_CURRENTS, dtype=jnp.float64),
     )
 
-    i_guiding_wires = jnp.array(builder.GUIDING__WIRE_CURRENTS, dtype=jnp.float64)
-    guiding_wire_segment_counts = jnp.array([len(wire) for wire in guiding_wires])
-    total_guiding = jnp.repeat(i_guiding_wires, guiding_wire_segment_counts)
 
-    initial_currents = jnp.concatenate([total_shifting, total_guiding])
+class WireCurrentPlanner(nn.Module):
+    n_wires: int
+    n_steps: int
+    hidden_dim: int
+    n_layers: int
+    current_limits: jnp.ndarray  # shape (n_wires,)
 
-    return wire_config, initial_currents
-
-
-def setup_bias_config() -> ac.atom_chip.BiasFieldConfig:
-    """
-    Build the bias fields for the atom chip.
-    """
-    bias_fields = builder.make_bias_fields()
-    return bias_fields.config
+    @nn.compact
+    def __call__(self, trajectory: jnp.ndarray) -> jnp.ndarray:
+        # trajectory: (n_steps, 3)
+        x = trajectory.reshape(-1)  # (n_steps * 3,)
+        for _ in range(self.n_layers):
+            x = nn.Dense(self.hidden_dim)(x)
+            x = nn.relu(x)
+        x = nn.Dense(self.n_wires * self.n_steps)(x)
+        x = jnp.tanh(x).reshape(self.n_steps, self.n_wires)
+        return x * self.current_limits  # shape: (n_steps, n_wires)
