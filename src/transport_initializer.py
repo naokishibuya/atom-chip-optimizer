@@ -1,7 +1,10 @@
+"""
+Initial Static Transport Trap Analysis
+"""
+
 from typing import List, Tuple
 import os
 import logging
-import jax
 import jax.numpy as jnp
 import atom_chip as ac
 
@@ -228,70 +231,6 @@ def setup_wire_layout(
     return shifting_wires, guiding_wires
 
 
-# Precompute the wire layout and segment counts
-SHIFTING_WIRES, GUIDING_WIRES = setup_wire_layout()
-GUIDING_WIRE_SEGMENT_COUNTS = jnp.array([len(wire) for wire in GUIDING_WIRES], dtype=jnp.int32)
-
-
-@jax.jit
-def distribute_currents_to_wires(I_wires: jnp.ndarray) -> jnp.ndarray:
-    """
-    Distribute logical wire currents to physical wire segments.
-    Input shape: (15,) = 6 shifting + 9 guiding
-    Output shape: (73,) = expanded full wire layout
-    """
-    I_shifting_wires = I_wires[:6]  # shape: (6,)
-    I_guiding_wires = I_wires[6:]  # shape: (9,)
-
-    # Expand shifting wires
-    total_shifting = jnp.concatenate(
-        [I_shifting_wires, -I_shifting_wires, I_shifting_wires, -I_shifting_wires, I_shifting_wires]
-    )  # (30,)
-
-    # Expand guiding wires
-    total_guiding = jnp.repeat(I_guiding_wires, GUIDING_WIRE_SEGMENT_COUNTS)  # (43,)
-
-    return jnp.concatenate([total_shifting, total_guiding])  # (73,)
-
-
-def setup_wire_config(
-    shifting_wires: List[ac.components.RectangularSegmentType],
-    guiding_wires: List[List[ac.components.RectangularSegmentType]],
-) -> ac.atom_chip.WireConfig:
-    """
-    Build the wire configuration for the atom chip.
-    """
-    starts = []
-    ends = []
-    widths = []
-    heights = []
-
-    # Collect segments for shifting and guiding wires
-    for segment in shifting_wires:
-        s, e, w, h = segment
-        starts.append(jnp.array(s, dtype=jnp.float64))
-        ends.append(jnp.array(e, dtype=jnp.float64))
-        widths.append(jnp.array(w, dtype=jnp.float64))
-        heights.append(jnp.array(h, dtype=jnp.float64))
-
-    for wire in guiding_wires:
-        for segment in wire:
-            s, e, w, h = segment
-            starts.append(jnp.array(s, dtype=jnp.float64))
-            ends.append(jnp.array(e, dtype=jnp.float64))
-            widths.append(jnp.array(w, dtype=jnp.float64))
-            heights.append(jnp.array(h, dtype=jnp.float64))
-
-    # Convert to WireConfig
-    wire_config = ac.atom_chip.WireConfig(
-        starts=jnp.stack(starts),
-        ends=jnp.stack(ends),
-        widths=jnp.stack(widths),
-        heights=jnp.stack(heights),
-    )
-    return wire_config
-
-
 def setup_wire_currents(
     shifting_wire_currents: List[float] = SHIFTING_WIRE_CURRENTS,
     guiding_wire_currents: List[float] = GUIDING_WIRE_CURRENTS,
@@ -310,7 +249,7 @@ def setup_wire_currents(
     return shifting_wire_currents, guiding_wire_currents
 
 
-def make_bias_config(
+def setup_bias_config(
     coil_currents: jnp.ndarray = COIL_CURRENTS,
     coil_factors: jnp.ndarray = COIL_FACTORS,
     stray_fields: jnp.ndarray = STRAY_FIELDS,
@@ -322,31 +261,35 @@ def make_bias_config(
     )
 
 
-def build_atom_chip(
-    shifting_wires: List[ac.components.RectangularSegmentType],
-    shifting_wire_currents: jnp.ndarray,
-    guiding_wires: List[ac.components.RectangularSegmentType],
-    guiding_wire_currents: jnp.ndarray,
-    bias_config: ac.field.BiasConfig,
-) -> ac.AtomChip:
+def build_atom_chip() -> ac.AtomChip:
+    # Define the wire layout
+    shifting_wires, guiding_wires = setup_wire_layout()
+    shifting_wire_currents, guiding_wire_currents = setup_wire_currents()
+    bias_config = setup_bias_config()
+
     # Define the PCB top layer shifting wires
+    # fmt: off
     top_layer = [
         ac.components.RectangularConductor.create(
-                material = "gold",
-                current  = current,  # Current (A)
-                segments = [wire,],
+            material = "gold",
+            current  = current,  # Current (A)
+            segments = [wire,],
         ) for wire, current in zip(shifting_wires, shifting_wire_currents)
     ]
+    # fmt: on
 
     # Define the PCB bottom layer guiding wires
+    # fmt: off
     bottom_layer = [
         ac.components.RectangularConductor.create(
-                    material = "copper",
-                    current  = current,  # Current (A)
-                    segments = wires,
+            material = "copper",
+            current  = current,  # Current (A)
+            segments = wires,
         ) for wires, current in zip(guiding_wires, guiding_wire_currents)
     ]
+    # fmt: on
 
+    # Create the atom chip with the defined components and bias configuration
     atom_chip = ac.AtomChip(
         name        = "BEC Transport",
         atom        = ac.rb87,
@@ -356,26 +299,10 @@ def build_atom_chip(
     return atom_chip
 
 
-def analyze_atom_chip(
-    shifting_wires: ac.atom_chip.WireConfig,
-    guiding_wires: ac.atom_chip.WireConfig,
-    shifting_wire_currents: jnp.ndarray,
-    guiding_wire_currents: jnp.ndarray,
-    bias_config: ac.field.BiasConfig,
-):
+def analyze_atom_chip(atom_chip: ac.AtomChip) -> ac.atom_chip.AtomChipAnalysis:
     """
-    Initial Static Transport Trap Analysis
+    Analyze the atom chip with the given analysis options.
     """
-    # Define the wire layout
-
-    atom_chip = build_atom_chip(
-        shifting_wires=shifting_wires,
-        shifting_wire_currents=shifting_wire_currents,
-        guiding_wires=guiding_wires,
-        guiding_wire_currents=guiding_wire_currents,
-        bias_config=bias_config,
-    )
-
     # Define the analysis options
     # fmt: on
     options = ac.potential.AnalysisOptions(
@@ -404,25 +331,18 @@ def analyze_atom_chip(
 
     # Perform the analysis
     analysis = atom_chip.analyze(options)
-
-    return analysis, atom_chip
+    return analysis
 
 
 def main():
     # logging level
     logging.basicConfig(level=logging.INFO)
 
-    shifting_wires, guiding_wires = setup_wire_layout()
-    shifting_wire_currents, guiding_wire_currents = setup_wire_currents()
-    bias_config = make_bias_config()
+    # Build the atom chip
+    atom_chip = build_atom_chip()
 
-    analysis, atom_chip = analyze_atom_chip(
-        shifting_wires=shifting_wires,
-        guiding_wires=guiding_wires,
-        shifting_wire_currents=shifting_wire_currents,
-        guiding_wire_currents=guiding_wire_currents,
-        bias_config=bias_config,
-    )
+    # Perform the analysis
+    analysis = analyze_atom_chip(atom_chip)
 
     # Save the atom chip layout to a JSON file
     directory = os.path.dirname(__file__)

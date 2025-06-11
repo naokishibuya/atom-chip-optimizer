@@ -51,7 +51,7 @@ def process_job():
     print("Processing simulation job...")
     layout = layout_queue.get()
     try:
-        atom_chip = ac.AtomChip.from_json("Atom Chip Analyzer", ac.rb87, layout)
+        atom_chip = ac.atom_chip.json_to_atom_chip("Atom Chip Analyzer", ac.rb87, layout)
         analysis = atom_chip.analyze(options)
         visualizer.update(atom_chip, analysis)
     except Exception as e:
