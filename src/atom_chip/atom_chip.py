@@ -6,9 +6,9 @@ import json
 import time
 import jax.numpy as jnp
 from .components import RectangularConductor, RectangularSegment
-from .field import BiasFields, BiasFieldConfig, get_bias_fields, biot_savart_rectangular, ZERO_BIAS_FIELD
+from .field import BiasConfig
 from .potential import Atom, AnalysisOptions, FieldAnalysis, PotentialAnalysis
-from .potential import trap_potential_energy, analyze_field, analyze_trap
+from . import field, potential
 
 
 class WireConfig(NamedTuple):
@@ -20,7 +20,7 @@ class WireConfig(NamedTuple):
 
 @jax.jit
 def trap_magnetic_fields(
-    points: jnp.ndarray, wires: WireConfig, currents: jnp.ndarray, bias: BiasFieldConfig
+    points: jnp.ndarray, wires: WireConfig, currents: jnp.ndarray, bias: BiasConfig
 ) -> Tuple[jnp.ndarray, jnp.ndarray]:
     """
     Compute the magnetic field at given points in space.
@@ -30,22 +30,58 @@ def trap_magnetic_fields(
         B (jnp.ndarray): Magnetic field vector at the points.
     """
     # Get the bias fields
-    B = get_bias_fields(points, bias)
-    B = B + biot_savart_rectangular(points, wires.starts, wires.ends, wires.widths, wires.heights, currents)
+    B = field.get_bias_fields(points, bias)
+    B = B + field.biot_savart_rectangular(points, wires.starts, wires.ends, wires.widths, wires.heights, currents)
     B_mag = jnp.linalg.norm(B, axis=1)
     return B_mag, B
 
 
 @jax.jit
 def trap_potential_energies(
-    points: jnp.ndarray, atom: Atom, wires: WireConfig, currents: jnp.ndarray, bias: BiasFieldConfig
+    points: jnp.ndarray, atom: Atom, wires: WireConfig, currents: jnp.ndarray, bias: BiasConfig
 ):
     """
     Compute the potential energy at given points in space.
     """
     B_mag, B = trap_magnetic_fields(points, wires, currents, bias)
     z = points[:, 2]
-    return trap_potential_energy(atom, B_mag, z), B_mag, B
+    return potential.trap_potential_energy(atom, B_mag, z), B_mag, B
+
+
+# This is not a JIT function
+def analyze_field(
+    atom: Atom,
+    wires: WireConfig,
+    currents: jnp.ndarray,
+    bias: BiasConfig,
+    options: AnalysisOptions,
+) -> FieldAnalysis:
+    """
+    Analyze the trap magnetic field at give points in space.
+    """
+    return potential.analyze_field(
+        atom,
+        lambda p: trap_magnetic_fields(jnp.atleast_2d(p), wires, currents, bias),
+        options=options,
+    )
+
+
+# This is not a JIT function
+def analyze_trap(
+    atom: Atom,
+    wires: WireConfig,
+    currents: jnp.ndarray,
+    bias: BiasConfig,
+    options: AnalysisOptions,
+) -> PotentialAnalysis:
+    """
+    Analyze the trap potential energy at given points in space.
+    """
+    return potential.analyze_trap(
+        atom,
+        lambda p: trap_potential_energies(jnp.atleast_2d(p), atom, wires, currents, bias),
+        options=options,
+    )
 
 
 class AtomChipAnalysis(NamedTuple):
@@ -63,36 +99,31 @@ class AtomChip:
         name: str,
         atom: Atom,
         components: List[RectangularConductor],
-        bias_fields: BiasFields,
+        bias_config: BiasConfig,
     ):
         self.name = name
         self.atom = atom
         self.components = components
-        self.bias_fields = bias_fields
+        self.bias_config = bias_config
+        self.wires = atom_chip_components_to_wires(self.components)
+        self.currents = atom_chip_components_to_currents(self.components)
 
     def get_fields(self, points: jnp.array) -> jnp.ndarray:
         points = jnp.atleast_2d(points).astype(jnp.float64)
-        wires = atom_chip_components_to_wires(self.components)
-        currents = atom_chip_components_to_currents(self.components)
-        return trap_magnetic_fields(points, wires, currents, self.bias_fields.config)
+        return trap_magnetic_fields(points, self.wires, self.currents, self.bias_config)
 
     def get_potentials(self, points: jnp.array) -> jnp.ndarray:
         points = jnp.atleast_2d(points).astype(jnp.float64)
-        wires = atom_chip_components_to_wires(self.components)
-        currents = atom_chip_components_to_currents(self.components)
-        return trap_potential_energies(points, self.atom, wires, currents, self.bias_fields.config)
+        return trap_potential_energies(points, self.atom, self.wires, self.currents, self.bias_config)
 
     def analyze(self, options: AnalysisOptions) -> AtomChipAnalysis:
-        logging.info(f"Bias fields: {self.bias_fields.to_dict()}")
+        logging.info(f"Bias fields: {field.bias_config_to_dict(self.bias_config)}")
         start_time = time.time()
-        field_analysis = analyze_field(self.atom, self.get_fields, options)
-        potential_analysis = analyze_trap(self.atom, self.get_potentials, options)
+        field_analysis = analyze_field(self.atom, self.wires, self.currents, self.bias_config, options)
+        potential_analysis = analyze_trap(self.atom, self.wires, self.currents, self.bias_config, options)
         end_time = time.time()
         logging.info(f"Analysis completed in {end_time - start_time:.2f} seconds")
-        return AtomChipAnalysis(
-            field=field_analysis,
-            potential=potential_analysis,
-        )
+        return AtomChipAnalysis(field=field_analysis, potential=potential_analysis)
 
     def save(self, path: str) -> str:
         """
@@ -142,11 +173,12 @@ class AtomChip:
                 segment_id += 1
         data = {
             "wires": wires,
-            "bias_fields": self.bias_fields.to_dict(),
+            "bias_fields": field.bias_config_to_dict(self.bias_config),
         }
         return data
 
-    def from_json(self, data: List[dict]):
+    @staticmethod
+    def from_json(name: str, atom: Atom, data: List[dict]):
         """
         Load the AtomChip from a JSON data.
 
@@ -183,22 +215,15 @@ class AtomChip:
 
         # load the bias fields
         if "bias_fields" in data:
-            bias_fields = data["bias_fields"]
-            # fmt: off
-            bias_fields = BiasFields(
-                coil_factors = jnp.array(bias_fields["coil_factors"], dtype=jnp.float64),
-                currents     = jnp.array(bias_fields["currents"]    , dtype=jnp.float64),
-                stray_fields = jnp.array(bias_fields["stray_fields"], dtype=jnp.float64),
-            )
-            # fmt: on
+            bias_config = field.dict_to_bias_config(data["bias_fields"])
         else:
-            bias_fields = ZERO_BIAS_FIELD
+            bias_config = field.ZERO_BIAS_CONFIG
 
         return AtomChip(
-            name=self.name,
-            atom=self.atom,
+            name=name,
+            atom=atom,
             components=components,
-            bias_fields=bias_fields,
+            bias_config=bias_config,
         )
 
 

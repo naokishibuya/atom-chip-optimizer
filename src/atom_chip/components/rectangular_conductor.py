@@ -1,4 +1,4 @@
-from typing import Tuple, Union
+from typing import List, Tuple, Union
 from dataclasses import dataclass
 import jax
 import jax.numpy as jnp
@@ -37,9 +37,12 @@ class RectangularConductor:
     A wire segment in 3D space defined by a rectangular cross-section.
 
     Attributes:
-        material (str): Material of the wire segment.
-        current (float): Current flowing through the wire in Amperes (A).
-        segments (List[RectangularSegmentType]): List of rectangular segments in millimeters (mm).
+        material (str): The material of the conductor ("copper", "gold")
+        current (float): The current flowing through the conductor in Amperes.
+        starts (jnp.ndarray): Starting points of the segments, shape (N, 3).
+        ends (jnp.ndarray): Ending points of the segments, shape (N, 3).
+        widths (jnp.ndarray): Widths of the segments, shape (N,).
+        heights (jnp.ndarray): Heights of the segments, shape (N,).
     """
 
     material: str
@@ -68,7 +71,7 @@ class RectangularConductor:
         )
 
     @staticmethod
-    def create(material: str, current: float, segments: list) -> "RectangularConductor":
+    def create(material: str, current: float, segments: List[RectangularSegmentType]) -> "RectangularConductor":
         segs = [s if isinstance(s, RectangularSegment) else RectangularSegment(*s) for s in segments]
         starts, ends, widths, heights = zip(*segs)
         return RectangularConductor(

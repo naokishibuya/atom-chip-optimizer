@@ -98,7 +98,7 @@ def build_atom_chip(
     )
 
     # Bias fields
-    bias_fields = ac.field.BiasFields(
+    bias_config = ac.field.BiasConfig(
         currents     = coil_currents, # Currents applied to external coids [A]
         coil_factors = coil_factors,  # Current to Field Conversion [G/A]
         stray_fields = stray_fields,  # Stray field offsets [G]
@@ -108,7 +108,7 @@ def build_atom_chip(
         name = "Copper Z",
         atom = ac.rb87,
         components = [copper_z, sidebars],
-        bias_fields = bias_fields,
+        bias_config = bias_config,
     )
     return atom_chip
 # fmt: on

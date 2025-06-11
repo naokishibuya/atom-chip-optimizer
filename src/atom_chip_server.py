@@ -38,16 +38,6 @@ options = ac.potential.AnalysisOptions(
 )
 # fmt: on
 
-# Build the atom chip
-# fmt: off
-prototype = ac.AtomChip(
-    name        = "Atom Chip Analyzer",
-    atom        = ac.rb87,
-    components  = [],
-    bias_fields = ac.field.ZERO_BIAS_FIELD,
-)
-# fmt: on
-
 
 # Loading visualizer configuration
 visualizer = ac.visualization.Visualizer(os.path.join(RUN_DIR, "visualization.yaml"))
@@ -61,7 +51,7 @@ def process_job():
     print("Processing simulation job...")
     layout = layout_queue.get()
     try:
-        atom_chip = prototype.from_json(layout)
+        atom_chip = ac.AtomChip.from_json("Atom Chip Analyzer", ac.rb87, layout)
         analysis = atom_chip.analyze(options)
         visualizer.update(atom_chip, analysis)
     except Exception as e:

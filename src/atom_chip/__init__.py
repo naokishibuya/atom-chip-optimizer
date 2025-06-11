@@ -1,6 +1,6 @@
 from .atom_chip import AtomChip
 from .potential import atom, Atom, rb87, constants
-from . import components, field, potential, transport, visualization
+from . import components, field, potential, visualization
 
 
 __all__ = [
@@ -12,6 +12,5 @@ __all__ = [
     "components",
     "field",
     "potential",
-    "transport",
     "visualization",
 ]

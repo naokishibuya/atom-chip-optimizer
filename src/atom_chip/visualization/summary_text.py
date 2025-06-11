@@ -72,7 +72,7 @@ def show_summary(
 def format_summary(atom_chip: AtomChip, analysis: AtomChipAnalysis) -> str:
     # Bias field parameters
     # fmt: off
-    bias       = atom_chip.bias_fields.config if atom_chip.bias_fields else None
+    bias       = atom_chip.bias_config
     field      = analysis.field
     potential  = analysis.potential
     bias_found = bias is not None

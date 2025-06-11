@@ -1,4 +1,7 @@
 from typing import List, Tuple
+import os
+import logging
+import jax
 import jax.numpy as jnp
 import atom_chip as ac
 
@@ -225,27 +228,94 @@ def setup_wire_layout(
     return shifting_wires, guiding_wires
 
 
-def setup_wire_currents() -> Tuple[jnp.ndarray, jnp.ndarray]:
+# Precompute the wire layout and segment counts
+SHIFTING_WIRES, GUIDING_WIRES = setup_wire_layout()
+GUIDING_WIRE_SEGMENT_COUNTS = jnp.array([len(wire) for wire in GUIDING_WIRES], dtype=jnp.int32)
+
+
+@jax.jit
+def distribute_currents_to_wires(I_wires: jnp.ndarray) -> jnp.ndarray:
+    """
+    Distribute logical wire currents to physical wire segments.
+    Input shape: (15,) = 6 shifting + 9 guiding
+    Output shape: (73,) = expanded full wire layout
+    """
+    I_shifting_wires = I_wires[:6]  # shape: (6,)
+    I_guiding_wires = I_wires[6:]  # shape: (9,)
+
+    # Expand shifting wires
+    total_shifting = jnp.concatenate(
+        [I_shifting_wires, -I_shifting_wires, I_shifting_wires, -I_shifting_wires, I_shifting_wires]
+    )  # (30,)
+
+    # Expand guiding wires
+    total_guiding = jnp.repeat(I_guiding_wires, GUIDING_WIRE_SEGMENT_COUNTS)  # (43,)
+
+    return jnp.concatenate([total_shifting, total_guiding])  # (73,)
+
+
+def setup_wire_config(
+    shifting_wires: List[ac.components.RectangularSegmentType],
+    guiding_wires: List[List[ac.components.RectangularSegmentType]],
+) -> ac.atom_chip.WireConfig:
+    """
+    Build the wire configuration for the atom chip.
+    """
+    starts = []
+    ends = []
+    widths = []
+    heights = []
+
+    # Collect segments for shifting and guiding wires
+    for segment in shifting_wires:
+        s, e, w, h = segment
+        starts.append(jnp.array(s, dtype=jnp.float64))
+        ends.append(jnp.array(e, dtype=jnp.float64))
+        widths.append(jnp.array(w, dtype=jnp.float64))
+        heights.append(jnp.array(h, dtype=jnp.float64))
+
+    for wire in guiding_wires:
+        for segment in wire:
+            s, e, w, h = segment
+            starts.append(jnp.array(s, dtype=jnp.float64))
+            ends.append(jnp.array(e, dtype=jnp.float64))
+            widths.append(jnp.array(w, dtype=jnp.float64))
+            heights.append(jnp.array(h, dtype=jnp.float64))
+
+    # Convert to WireConfig
+    wire_config = ac.atom_chip.WireConfig(
+        starts=jnp.stack(starts),
+        ends=jnp.stack(ends),
+        widths=jnp.stack(widths),
+        heights=jnp.stack(heights),
+    )
+    return wire_config
+
+
+def setup_wire_currents(
+    shifting_wire_currents: List[float] = SHIFTING_WIRE_CURRENTS,
+    guiding_wire_currents: List[float] = GUIDING_WIRE_CURRENTS,
+) -> Tuple[jnp.ndarray, jnp.ndarray]:
     # shifting wire currents (A)
-    shifting_wire_currents_reversed = [-i for i in SHIFTING_WIRE_CURRENTS]
+    shifting_wire_currents_reversed = [-i for i in shifting_wire_currents]
     shifting_wire_currents = jnp.array(
-        SHIFTING_WIRE_CURRENTS +
+        shifting_wire_currents +
         shifting_wire_currents_reversed +
-        SHIFTING_WIRE_CURRENTS +
+        shifting_wire_currents +
         shifting_wire_currents_reversed +
-        SHIFTING_WIRE_CURRENTS,
+        shifting_wire_currents,
         dtype=jnp.float64,
     )
-    guiding_wire_currents = jnp.array(GUIDING_WIRE_CURRENTS, dtype=jnp.float64)
+    guiding_wire_currents = jnp.array(guiding_wire_currents, dtype=jnp.float64)
     return shifting_wire_currents, guiding_wire_currents
 
 
-def make_bias_fields(
+def make_bias_config(
     coil_currents: jnp.ndarray = COIL_CURRENTS,
     coil_factors: jnp.ndarray = COIL_FACTORS,
     stray_fields: jnp.ndarray = STRAY_FIELDS,
-) -> ac.field.BiasFields:
-    return ac.field.BiasFields(
+) -> ac.field.BiasConfig:
+    return ac.field.BiasConfig(
         currents     = coil_currents,  # Currents applied to external coils [A]
         coil_factors = coil_factors,   # Current to Field Conversion [G/A]
         stray_fields = stray_fields,   # Stray field offsets [G]
@@ -257,7 +327,7 @@ def build_atom_chip(
     shifting_wire_currents: jnp.ndarray,
     guiding_wires: List[ac.components.RectangularSegmentType],
     guiding_wire_currents: jnp.ndarray,
-    bias_fields: ac.field.BiasFields,
+    bias_config: ac.field.BiasConfig,
 ) -> ac.AtomChip:
     # Define the PCB top layer shifting wires
     top_layer = [
@@ -281,6 +351,86 @@ def build_atom_chip(
         name        = "BEC Transport",
         atom        = ac.rb87,
         components  = top_layer + bottom_layer,
-        bias_fields = bias_fields,
+        bias_config = bias_config,
     )
     return atom_chip
+
+
+def analyze_atom_chip(
+    shifting_wires: ac.atom_chip.WireConfig,
+    guiding_wires: ac.atom_chip.WireConfig,
+    shifting_wire_currents: jnp.ndarray,
+    guiding_wire_currents: jnp.ndarray,
+    bias_config: ac.field.BiasConfig,
+):
+    """
+    Initial Static Transport Trap Analysis
+    """
+    # Define the wire layout
+
+    atom_chip = build_atom_chip(
+        shifting_wires=shifting_wires,
+        shifting_wire_currents=shifting_wire_currents,
+        guiding_wires=guiding_wires,
+        guiding_wire_currents=guiding_wire_currents,
+        bias_config=bias_config,
+    )
+
+    # Define the analysis options
+    # fmt: on
+    options = ac.potential.AnalysisOptions(
+        search=dict(
+            x0=[0.0, 0.0, 0.5],  # Initial guess
+            bounds=[(-0.5, 0.5), (-0.5, 0.5), (0.0, 1.0)],
+            method="Nelder-Mead",
+            options=dict(
+                xatol=1e-10,
+                fatol=1e-10,
+                maxiter=int(1e5),
+                maxfev=int(1e5),
+                disp=True,
+            ),
+        ),
+        hessian=dict(
+            # method = "jax",
+            method="finite-difference",
+            hessian_step=1e-5,  # Step size for Hessian calculation
+        ),
+        # for the trap analayis (not used for field analysis)
+        total_atoms=1e5,
+        condensed_atoms=1e5,
+    )
+    # fmt: on
+
+    # Perform the analysis
+    analysis = atom_chip.analyze(options)
+
+    return analysis, atom_chip
+
+
+def main():
+    # logging level
+    logging.basicConfig(level=logging.INFO)
+
+    shifting_wires, guiding_wires = setup_wire_layout()
+    shifting_wire_currents, guiding_wire_currents = setup_wire_currents()
+    bias_config = make_bias_config()
+
+    analysis, atom_chip = analyze_atom_chip(
+        shifting_wires=shifting_wires,
+        guiding_wires=guiding_wires,
+        shifting_wire_currents=shifting_wire_currents,
+        guiding_wire_currents=guiding_wire_currents,
+        bias_config=bias_config,
+    )
+
+    # Save the atom chip layout to a JSON file
+    directory = os.path.dirname(__file__)
+    atom_chip.save(os.path.join(directory, "transport.json"))
+
+    # Perform the visualization
+    ac.visualization.show(atom_chip, analysis, os.path.join(directory, "visualization.yaml"))
+
+
+if __name__ == "__main__":
+    main()

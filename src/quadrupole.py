@@ -283,7 +283,7 @@ def make_chip_q(
         name       = "Quadrupole",
         atom       = ac.rb87,
         components = components,
-        bias_fields= ac.field.ZERO_BIAS_FIELD,
+        bias_config= ac.field.ZERO_BIAS_CONFIG,
     )
 # fmt: on
 
