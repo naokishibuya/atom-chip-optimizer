@@ -53,27 +53,20 @@ def setup_wire_config() -> ac.atom_chip.WireConfig:
 
 
 # ----------------------------------------------------------------------------------------------------
-# Generate a linear trajectory for the trap center position.
+# Calculate the target position of the trap.
 #
 # This can be JIT-compiled but it's not necessary since it runs only once.
 # ----------------------------------------------------------------------------------------------------
-def generate_reference_trajectory(
+def calculate_destination(
     r0: jnp.ndarray,
     num_shifts: int,
     shifting_wire_distance: float,  # mm
-    steps_per_wire_distance: int,
 ) -> jnp.ndarray:
     """
-    Generates a linear trajectory for the trap center position, and start and end currents for the wires.
+    Calculate the target position of the trap after a number of shifts.
     """
-    step_size = shifting_wire_distance / steps_per_wire_distance
-    num_steps = num_shifts * steps_per_wire_distance
-
-    steps = jnp.arange(0, num_steps + 1).reshape(-1, 1)
-    shift = steps * step_size
-    trajectory = r0 + shift * jnp.array([1.0, 0.0, 0.0])
-
-    return trajectory
+    distance = num_shifts * shifting_wire_distance
+    return r0 + distance * jnp.array([1.0, 0.0, 0.0])
 
 
 # ----------------------------------------------------------------------------------------------------
@@ -140,7 +133,7 @@ def evaluate_trap(
     bias_config: ac.field.BiasConfig,
     wire_currents: jnp.ndarray,
     trap_position: jnp.ndarray,
-) -> Tuple[jnp.ndarray, jnp.ndarray]:
+) -> Tuple[jnp.ndarray, jnp.ndarray, jnp.ndarray]:
     """Evaluate potential energy and curvature at a fixed position."""
 
     def objective(r):
@@ -149,14 +142,18 @@ def evaluate_trap(
         return U[0]
 
     U0 = objective(trap_position)
-    H = ac.potential.hessian_by_finite_difference(
-        objective,
-        jnp.ravel(trap_position),
-        step=1e-3,
-    )
-    eigenvalues = H.eigenvalues * 1e6  # # J/mm^2 -> J/m^2
+    # H = ac.potential.hessian_by_finite_difference(
+    #     objective,
+    #     jnp.ravel(trap_position),
+    #     step=1e-3,
+    # )
+    # eigenvalues = H.eigenvalues * 1e6  # # J/mm^2 -> J/m^2
+    # omega = jnp.sqrt(eigenvalues / atom.mass) / (2 * jnp.pi)
+    H = jax.hessian(objective)(trap_position.ravel())  # .ravel() ensures it's 1D
+    eigenvalues = jnp.linalg.eigvalsh(H) * 1e6  # Use eigvalsh for symmetric matrix, more stable
     omega = jnp.sqrt(eigenvalues / atom.mass) / (2 * jnp.pi)
-    return U0, omega
+
+    return U0, omega, eigenvalues
 
 
 # ----------------------------------------------------------------------------------------------------
@@ -184,6 +181,77 @@ def distribute_currents_to_wires(I_wires: jnp.ndarray) -> jnp.ndarray:
 
 
 # ----------------------------------------------------------------------------------------------------
+# Main function to run the transport optimization.
+# ----------------------------------------------------------------------------------------------------
+def main():
+    # 1. Simulation parameters
+    T = 1000
+    num_shifts = 6
+    λ = 1e-2  # λ ∈ [1e-4, 1e-1]
+
+    I_max_shifting = 1.0  # A, max current for shifting wires
+    I_max_guiding = 14.0  # A, max current for guiding wires
+
+    # Mask to disable guiding wires during the optimization
+    # wire_ids = jnp.arange(0, 15, dtype=jnp.int32)  # All wires
+    wire_ids = jnp.arange(0, 6, dtype=jnp.int32)  # Only shifting wires
+    # wire_ids = jnp.arange(0, 5, dtype=jnp.int32)  # shifting wires except zero current wire
+    # wire_ids = jnp.concatenate([jnp.arange(0, 6), jnp.array([6, 14])], dtype=jnp.int32)
+    # wire_ids = jnp.concatenate([jnp.arange(0, 6), jnp.arange(7, 14)], dtype=jnp.int32)
+    # wire_ids = jnp.array([5, 6, 14], dtype=jnp.int32) # Only those with 0 current in the start
+    mask = jnp.zeros((15,)).at[wire_ids].set(1.0)
+
+    setting_info = f"T={T}, num_shifts={num_shifts}, λ={λ}"
+    print(f"Transport optimization settings: {setting_info}, mask={mask}")
+
+    # 2. Transport initial setup
+    wire_config = setup_wire_config()
+    bias_config = transport_initializer.setup_bias_config()
+
+    I_shifting_wires = jnp.array(transport_initializer.SHIFTING_WIRE_CURRENTS, dtype=jnp.float64)
+    I_guiding_wires = jnp.array(transport_initializer.GUIDING_WIRE_CURRENTS, dtype=jnp.float64)
+    I_start = jnp.concatenate([I_shifting_wires, I_guiding_wires])
+    I_limits = jnp.concatenate(
+        [
+            jnp.ones_like(I_shifting_wires) * I_max_shifting,  # Shifting wires limits
+            jnp.ones_like(I_guiding_wires) * I_max_guiding,  # Guiding wires limits
+        ]
+    )  # shape: (15,)
+
+    # 3. Reference values for the trap
+    atom_chip = transport_initializer.build_atom_chip()
+    analysis = transport_initializer.analyze_atom_chip(atom_chip)
+    r0_ref = analysis.potential.minimum.position
+    U0_ref = analysis.potential.minimum.value
+    omega_ref = analysis.potential.trap.frequency
+    radii_ref = analysis.potential.bec.radii  # non-interacting BEC radii
+    destination_r = calculate_destination(r0_ref, num_shifts, shifting_wire_distance=0.4)  # mm
+
+    print(f"Initial trap pos: {r0_ref}, U0: {U0_ref:.4g}, omega: {omega_ref} (Hz) radii: {radii_ref} (m)")
+    print(f"Desired final position: {destination_r}")
+
+    # 4. Optimize the transport
+    trajectory, target_rs, current_log, U0_vals, omega_vals, radii_vals = optimize_transport(
+        atom=atom_chip.atom,
+        wire_config=wire_config,
+        bias_config=bias_config,
+        I_start=I_start,
+        I_limits=I_limits,
+        mask=mask,
+        r0_ref=r0_ref,
+        U0_ref=U0_ref,
+        omega_ref=omega_ref,
+        radii_ref=radii_ref,
+        destination_r=destination_r,
+        T=T,
+        λ=λ,
+    )
+
+    # 5. Plot the results
+    plot_results(setting_info, trajectory, target_rs, current_log, U0_vals, omega_vals, radii_vals)
+
+
+# ----------------------------------------------------------------------------------------------------
 # Optimize the transport of the atom chip trap.
 # ----------------------------------------------------------------------------------------------------
 # fmt: off
@@ -192,14 +260,14 @@ def optimize_transport(
     wire_config    : ac.atom_chip.WireConfig,
     bias_config    : ac.field.BiasConfig,
     I_start        : jnp.ndarray,  # Initial currents for the wires (shape: (15,))
-    I_end          : jnp.ndarray,  # Final currents for the wires (shape: (15,))
-    mask           : jnp.ndarray,  # Mask to disable guiding wires during optimization
-    trajectory_ref : jnp.ndarray,  # Reference trajectory for the trap (shape: (T, 3))
+    I_limits       : jnp.ndarray,  # Optional limits for the currents (shape: (15,))
+    mask           : jnp.ndarray,  # Mask to restrict current updates (shape: (15,))
     r0_ref         : jnp.ndarray,  # Reference position of the trap at t=0 (shape: (3,))
     U0_ref         : float,        # Reference potential energy of the trap
     omega_ref      : jnp.ndarray,  # Reference trap frequencies (shape: (3,))
+    radii_ref      : jnp.ndarray,  # Reference BEC radii (shape: (3,))
+    destination_r  : jnp.ndarray,  # Desired final position of the trap (shape: (3,))
     T              : int,          # Number of time steps
-    α              : float,        # Schedule-following weight
     λ              : float,        # Regularization parameter
 ):
 # fmt: on
@@ -208,9 +276,7 @@ def optimize_transport(
         return 0.5 * (1 - jnp.cos(jnp.pi * t / T))
 
     def r_target(t: int, T: int) -> jnp.ndarray:
-        r_start = trajectory_ref[0]
-        r_end   = trajectory_ref[-1]
-        return r_start + cosine_schedule(t, T) * (r_end - r_start)
+        return r0_ref + cosine_schedule(t, T) * (destination_r - r0_ref)
 
     @jax.jit
     def trap_U(r: jnp.ndarray, I_wires: jnp.ndarray) -> float:
@@ -236,190 +302,181 @@ def optimize_transport(
     # fmt: off
     I_wires     = I_start
     trajectory  = [ r0_ref    ]
+    target_rs   = [ r0_ref    ]
     current_log = [ I_wires   ]
-    U0_vals     = [ U0_ref    ]  # to log trap potential energy U0
-    omega_vals  = [ omega_ref ]  # to log trap frequencies
+    U0_vals     = [ U0_ref    ]
+    omega_vals  = [ omega_ref ]
+    radii_vals  = [ radii_ref ]
+    error_log   = []
     # fmt: on
+
+    # Initialize the trap radii based on the reference values
+    def target_following_ratio(radii, k=10.0):
+        scale = jnp.linalg.norm(radii / radii_ref - 1.0)
+        return 1.0 - 1.0 / (1.0 + jnp.exp(k * (scale - 0.1)))  # ε ~ 0.1 or 0.2
 
     # Control loop
     for t in range(T):
         # Compute the current target position
-        r_now = α * r_target(t, T) + (1 - α) * trajectory[-1]  # Average with last position
+        follow_ratio = target_following_ratio(radii_vals[-1])
+        r_now = follow_ratio * r_target(t, T) + (1.0 - follow_ratio) * trajectory[-1]  # Average with last position
         r_next = r_target(t + 1, T)
         delta_r = r_next - r_now
 
         # Compute the implicit gradient and update currents
         J = compute_dr_dI(r_now, I_wires)
-        omega = omega_vals[-1]  # Use the last computed frequency
-        adjusted_λ = λ * (1 + jnp.max(omega / omega_ref))  # if trap is tight, increase regularization
+        cond_J = jnp.linalg.cond(J)
+        adjusted_λ = λ * (1 + jnp.linalg.norm(cond_J))
         delta_I = jnp.linalg.solve(J.T @ J + adjusted_λ * jnp.eye(J.shape[1]), J.T @ delta_r)
         I_wires = I_wires + delta_I * mask  # Apply mask to restrict current updates
+        I_wires = jnp.clip(I_wires, -I_limits, I_limits)
 
         # Find the minimum trap position and evaluate the trap
         wire_currents = distribute_currents_to_wires(I_wires)
         r_min = find_trap_minimum(atom, wire_config, bias_config, wire_currents, r_now)
-        U0, omega = evaluate_trap(atom, wire_config, bias_config, wire_currents, r_min)
+        U0, omega, eigenvalues = evaluate_trap(atom, wire_config, bias_config, wire_currents, r_min)
+        if jnp.any(jnp.isnan(omega)) or jnp.any(eigenvalues < 0):
+            # Handle NaN or negative eigenvalues in omega
+            message = "Encountered NaN or negative eigenvalues in trap evaluation."
+            error_log.append((t, r_min, I_wires, U0, omega, message))
+            continue
+
+        radii = jnp.sqrt(ac.constants.hbar / (atom.mass *  2 * jnp.pi * omega))  # Calculate BEC radii from frequencies
 
         # Log the results
         trajectory.append(r_min)
+        target_rs.append(r_next)
         current_log.append(I_wires)
         U0_vals.append(U0)
         omega_vals.append(omega)
+        radii_vals.append(radii)
 
-        print(f"Step {t + 1}: r_min = {r_min}, U0 = {U0:.4g}, omega = {omega}")
-    return trajectory, current_log, U0_vals, jnp.stack(omega_vals)
+        print(f"Step {t + 1:4d}: r_min={r_min} U0={U0:.4g} omega={omega} radii={radii}")
 
+    if error_log:
+        print(f"Errors encountered during optimization: {len(error_log)} steps with NaN or negative eigenvalues.")
+        for step, r_min, I_wires, U0, omega, message in error_log:
+            print(f"Step {step}: r_min={r_min}, I_wires={I_wires}, U0={U0}, omega={omega}: {message}")
+    else:
+        print("Optimization completed successfully without errors.")
 
-def main():
-    # Set up reference variables and configurations
-    atom_chip = transport_initializer.build_atom_chip()
-    analysis = transport_initializer.analyze_atom_chip(atom_chip)
-    r0_ref = analysis.potential.minimum.position
-    U0_ref = analysis.potential.minimum.value
-    omega_ref = analysis.potential.trap.frequency
-
-    num_shifts = 6
-    trajectory_ref = generate_reference_trajectory(
-        r0=r0_ref,
-        num_shifts=num_shifts,
-        shifting_wire_distance=0.4,  # mm
-        steps_per_wire_distance=20,
-    )
-
-    print(f"Initial trap pos: {r0_ref}, U0: {U0_ref:.4g}, omega: {omega_ref}")
-    print(f"Desired final position: {trajectory_ref[-1]}")
-
-    # Get the wire layout and initial conditions
-    wire_config = setup_wire_config()
-    bias_config = transport_initializer.setup_bias_config()
-
-    I_shifting_wires = jnp.array(transport_initializer.SHIFTING_WIRE_CURRENTS, dtype=jnp.float64)
-    I_guiding_wires = jnp.array(transport_initializer.GUIDING_WIRE_CURRENTS, dtype=jnp.float64)
-    I_start = jnp.concatenate([I_shifting_wires, I_guiding_wires])
-    I_end = jnp.concatenate([jnp.roll(I_shifting_wires, num_shifts), I_guiding_wires])
-
-    # Mask to disable guiding wires during the optimization
-    masked_wire_ids = jnp.arange(6, 15, dtype=jnp.int32)  # Guiding wires
-    mask = jnp.ones_like(I_start).at[masked_wire_ids].set(0.0)  # Disable guiding wires
-
-    T = 20
-    α = 0.65  # schedule-following weight
-    λ = 1e-4  # λ ∈ [1e-4, 1e-1]
-
-    trajectory, current_log, U0_vals, omega_vals = optimize_transport(
-        atom=atom_chip.atom,
-        wire_config=wire_config,
-        bias_config=bias_config,
-        I_start=I_start,
-        I_end=I_end,
-        mask=mask,
-        trajectory_ref=trajectory_ref,
-        r0_ref=r0_ref,
-        U0_ref=U0_ref,
-        omega_ref=omega_ref,
-        T=T,
-        α=α,
-        λ=λ,
-    )
-    # Convert lists to arrays for plotting
-    plot_results(trajectory, current_log, U0_vals, omega_vals)
+    return trajectory, target_rs, current_log, U0_vals, omega_vals, radii_vals
 
 
 # fmt: off
 def plot_results(
+    setting_info: str,
     trajectory: List[jnp.ndarray],
+    target_rs: List[jnp.ndarray],
     current_log: List[jnp.ndarray],
     U0_vals: List[float],
     omega_vals: List[jnp.ndarray],
+    radii_vals: List[jnp.ndarray],
 ):
-# fmt: on
-
-# fmt: off
     trajectory  = jnp.stack(trajectory)
+    target_rs   = jnp.stack(target_rs)
     current_log = jnp.stack(current_log)
     U0_vals     = jnp.array(U0_vals)
-    omega_vals  = jnp.stack(omega_vals)  # shape (N, 3)
-# fmt: on
+    omega_vals  = jnp.stack(omega_vals)
+    radii_vals  = jnp.stack(radii_vals)
 
     # Plotting the trap trajectory, currents, U0, and omega.
-    fig, axs = plt.subplots(3, 3, figsize=(14, 10))
+    fig, axs = plt.subplots(4, 3, figsize=(14, 12))
+    fig.suptitle(f"Optimization results: {setting_info}", fontsize=12)
 
-    # Plot x-y trap trajectory.
-    axs[0, 0].plot(trajectory[:, 0], trajectory[:, 1], marker="o", label="x-y position")
-    axs[0, 0].set_title("Trap Trajectory (x-y)")
-    axs[0, 0].set_xlabel("x (mm)")
-    axs[0, 0].set_ylabel("y (mm)")
-    axs[0, 0].legend()
-    axs[0, 0].axis("equal")
-
-    # Plot x-z trap trajectory.
-    axs[1, 0].plot(trajectory[:, 0], trajectory[:, 2], marker="o", label="x-z position")
-    axs[1, 0].set_title("Trap Trajectory (x-z)")
-    axs[1, 0].set_xlabel("x (mm)")
-    axs[1, 0].set_ylabel("z (mm)")
-    axs[1, 0].legend()
-
-    # Plot x over time.
-    axs[2, 0].plot(trajectory[:, 0], marker="o", label="x position")
-    axs[2, 0].set_title("Trap x Position Over Time")
-    axs[2, 0].set_xlabel("Step")
-    axs[2, 0].set_ylabel("x (mm)")
-    axs[2, 0].set_xticks(range(len(trajectory)))
-    axs[2, 0].legend()
-
-    # Plot wire currents over time.
-    for i in range(6):
-        axs[0, 1].plot(current_log[:, i], label=f"Wire {i}")
-    axs[0, 1].set_title("Wire Currents Over Time")
-    axs[0, 1].set_xlabel("Step")
-    axs[0, 1].set_ylabel("Current (A)")
-    axs[0, 1].set_xticks(range(len(current_log)))
-    axs[0, 1].legend(fontsize="small", ncol=2)
-
-    for i in [6, 14]:
-        axs[1, 1].plot(current_log[:, i], label=f"Wire {i}")
-    axs[1, 1].set_title("Wire Currents Over Time")
-    axs[1, 1].set_xlabel("Step")
-    axs[1, 1].set_ylabel("Current (A)")
-    axs[1, 1].set_xticks(range(len(current_log)))
-    axs[1, 1].legend(fontsize="small", ncol=2)
-
-    for i in [7, 8, 12, 13]:
-        axs[2, 1].plot(current_log[:, i], label=f"Wire {i}")
-    axs[2, 1].set_title("Wire Currents Over Time")
-    axs[2, 1].set_xlabel("Step")
-    axs[2, 1].set_ylabel("Current (A)")
-    axs[2, 1].set_xticks(range(len(current_log)))
-    axs[2, 1].legend(fontsize="small", ncol=2)
-
-    for i in [9, 10, 11]:
-        axs[0, 2].plot(current_log[:, i], label=f"Wire {i}")
-    axs[0, 2].set_title("Wire Currents Over Time")
-    axs[0, 2].set_xlabel("Step")
-    axs[0, 2].set_ylabel("Current (A)")
-    axs[0, 2].set_xticks(range(len(current_log)))
-    axs[0, 2].legend(fontsize="small", ncol=2)
-
-    # Plot U0 (trap potential energy) over time.
-    axs[1, 2].plot(U0_vals, marker="o", label="U0")
-    axs[1, 2].set_title("Trap Potential Energy (U0) Over Time")
-    axs[1, 2].set_xlabel("Step")
-    axs[1, 2].set_ylabel("U0 (J)")
-    axs[1, 2].set_xticks(range(len(U0_vals)))
-    axs[1, 2].legend()
-
-    # Plot trap frequencies over time.
-    for i, label in enumerate(["$\\omega_x$", "$\\omega_y$", "$\\omega_z$"]):
-        axs[2, 2].plot(omega_vals[:, i], marker="o", label=label)
-    axs[2, 2].set_title("Trap Frequencies Over Time")
-    axs[2, 2].set_xlabel("Step")
-    axs[2, 2].set_ylabel("Frequency (arb. units)")
-    axs[2, 2].set_xticks(range(len(omega_vals)))
-    axs[2, 2].legend()
+    plot_x_over_time     (axs[0, 0], trajectory, target_rs)
+    plot_xy_trajectory   (axs[0, 1], trajectory, target_rs)
+    plot_xz_trajectory   (axs[0, 2], trajectory, target_rs)
+    plot_wire_currents   (axs[1, 0], current_log, wire_indices=[0, 1, 2, 3, 4, 5])
+    plot_trap_potential  (axs[1, 1], U0_vals)
+    plot_trap_frequencies(axs[1, 2], omega_vals)
+    plot_wire_currents   (axs[2, 0], current_log, wire_indices=[6, 14])
+    plot_wire_currents   (axs[2, 1], current_log, wire_indices=[7, 9, 12, 13])
+    plot_wire_currents   (axs[2, 2], current_log, wire_indices=[9, 10, 11])
+    plot_trap_radii      (axs[3, 0], radii_vals[:, 0], label="$r_x$")
+    plot_trap_radii      (axs[3, 1], radii_vals[:, 1], label="$r_y$")
+    plot_trap_radii      (axs[3, 2], radii_vals[:, 2], label="$r_z$")
 
     plt.tight_layout()
     plt.savefig("transport.png", dpi=300)
     plt.show()
+# fmt: on
+
+
+def plot_x_over_time(ax: plt.Axes, trajectory: jnp.ndarray, trajectory_ref: jnp.ndarray):
+    # Plot x over time.
+    x = trajectory[:, 0]
+    x_ref = trajectory_ref[:, 0]
+    ax.plot(x_ref, linestyle="-", label="Target x position", color="orange")
+    ax.plot(x, marker="o", label="x position", markersize=0.5)
+    ax.set_title("Trap x Position Over Time")
+    ax.set_xlabel("Step")
+    ax.set_ylabel("x (mm)")
+    ax.legend()
+
+
+def plot_xy_trajectory(ax: plt.Axes, trajectory: jnp.ndarray, trajectory_ref: jnp.ndarray):
+    # Plot x-y trap trajectory.
+    x, y = trajectory[:, 0], trajectory[:, 1]
+    x_ref, y_ref = trajectory_ref[:, 0], trajectory_ref[:, 1]
+    ax.plot(x_ref, y_ref, linestyle="-", label="Target x-y position", color="orange")
+    ax.plot(x, y, marker="o", label="x-y position", markersize=0.5)
+    ax.set_title("Trap Trajectory (x-y)")
+    ax.set_xlabel("x (mm)")
+    ax.set_ylabel("y (mm)")
+    ax.legend()
+    ax.axis("equal")
+
+
+def plot_xz_trajectory(ax: plt.Axes, trajectory: jnp.ndarray, trajectory_ref: jnp.ndarray):
+    # Plot x-z trap trajectory.
+    x, z = trajectory[:, 0], trajectory[:, 2]
+    x_ref, z_ref = trajectory_ref[:, 0], trajectory_ref[:, 2]
+    ax.plot(x_ref, z_ref, linestyle="-", label="Target x-z position", color="orange")
+    ax.plot(x, z, marker="o", label="x-z position", markersize=0.5)
+    ax.set_title("Trap Trajectory (x-z)")
+    ax.set_xlabel("x (mm)")
+    ax.set_ylabel("z (mm)")
+    ax.legend()
+
+
+def plot_wire_currents(ax: plt.Axes, current_log: jnp.ndarray, wire_indices: List[int]):
+    # Plot wire currents over time.
+    for i in wire_indices:
+        ax.plot(current_log[:, i], label=f"Wire {i}")
+    ax.set_title("Wire Currents Over Time")
+    ax.set_xlabel("Step")
+    ax.set_ylabel("Current (A)")
+    ax.legend(fontsize="small", ncol=2)
+
+
+def plot_trap_potential(ax: plt.Axes, U0_vals: List[float]):
+    # Plot U0 (trap potential energy) over time.
+    ax.plot(U0_vals, marker="o", label="U0", markersize=0.5)
+    ax.set_title("Trap Potential Energy (U0) Over Time")
+    ax.set_xlabel("Step")
+    ax.set_ylabel("U0 (J)")
+    ax.legend()
+
+
+def plot_trap_frequencies(ax: plt.Axes, omega_vals: jnp.ndarray):
+    # Plot trap frequencies over time.
+    for i, label in enumerate(["$\\omega_x$", "$\\omega_y$", "$\\omega_z$"]):
+        ax.plot(omega_vals[:, i], marker="o", label=label, markersize=0.5)
+    ax.set_title("Trap Frequencies Over Time")
+    ax.set_xlabel("Step")
+    ax.set_ylabel("Frequency (Hz)")
+    ax.legend()
+
+
+def plot_trap_radii(ax: plt.Axes, radii_vals: jnp.ndarray, label: str):
+    # Plot BEC radii over time.
+    ax.plot(radii_vals, marker="o", label=label, markersize=0.5)
+    ax.set_title("BEC Radii Over Time")
+    ax.set_xlabel("Step")
+    ax.set_ylabel("Radius (m)")
+    ax.set_ylim(0.0, 2.0e-6)  # Adjust y-limits for better visibility
+    ax.legend()
 
 
 if __name__ == "__main__":
