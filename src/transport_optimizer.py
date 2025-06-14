@@ -199,20 +199,28 @@ def distribute_currents_to_wires(I_wires: jnp.ndarray) -> jnp.ndarray:
 # ----------------------------------------------------------------------------------------------------
 # fmt: off
 def main(
-    T              : int = 1000,
-    num_shifts     : int = 6,
-    reg            : float = 1e-2,    # regularization ∈ [1e-4, 1e-1]
-    n_atoms        : int = int(1e5),  # Number of atoms in the BEC
-    I_max_shifting : float = 1.0,     # A, max current for shifting wires
-    I_max_guiding  : float = 14.0,    # A, max current for guiding wires
-    wire_ids: jnp.ndarray = jnp.arange(0, 6, dtype=jnp.int32),  # Only shifting wires
+    T              : int,
+    num_shifts     : int,
+    reg            : float,       # regularization ∈ [1e-4, 1e-1]
+    n_atoms        : int,         # Number of atoms in the BEC
+    I_max_shifting : float,       # A, max current for shifting wires
+    I_max_guiding  : float,       # A, max current for guiding wires
+    wire_ids       : jnp.ndarray,
 ):
 # fmt: on
 
     # 1. Simulation parameters
+    parameters = dict(
+        T=T,
+        num_shifts=num_shifts,
+        reg=reg,
+        n_atoms=n_atoms,
+        I_max_shifting=I_max_shifting,
+        I_max_guiding=I_max_guiding,
+        wire_ids=wire_ids.tolist(),
+    )
     mask = jnp.zeros((15,)).at[wire_ids].set(1.0)
-    setting_info = f"T={T}, num_shifts={num_shifts}, λ={reg}"
-    print(f"Transport optimization settings: {setting_info}, mask={mask}")
+    print(f"Transport optimization settings: {parameters}, mask={mask}")
 
     # 2. Transport initial setup
     wire_config = setup_wire_config()
@@ -265,7 +273,7 @@ def main(
 
     # 5. Save the results as a CSV file
     save_results(
-        setting_info,
+        parameters,
         trajectory,
         target_rs,
         current_log,
@@ -280,7 +288,7 @@ def main(
 
     # 4. Plot the results
     plot_results(
-        setting_info,
+        parameters,
         trajectory,
         target_rs,
         current_log,
@@ -438,7 +446,7 @@ def format_array(array: jnp.ndarray) -> str:
 
 
 def save_results(
-    setting_info: str,
+    parameters: dict,
     trajectory: jnp.ndarray,
     target_rs: jnp.ndarray,
     current_log: jnp.ndarray,
@@ -454,7 +462,7 @@ def save_results(
     Save the results into a JSON file
     """
     results = {
-        "setting_info": setting_info,
+        "parameters": parameters,
         "trajectory": trajectory.tolist(),
         "target_rs": target_rs.tolist(),
         "current_log": current_log.tolist(),
@@ -478,7 +486,7 @@ def load_results(file_path: str) -> dict:
         results = json.load(f)
     print(f"Results loaded from {file_path}")
 
-    # Convert lists back to jnp.array except for setting_info
+    # Convert lists back to jnp.array except for parameters
     for key in results:
         if isinstance(results[key], list):
             results[key] = jnp.array(results[key])
@@ -487,7 +495,7 @@ def load_results(file_path: str) -> dict:
 
 # fmt: off
 def plot_results(
-    setting_info: str,
+    parameters: dict,
     trajectory: jnp.ndarray,
     target_rs: jnp.ndarray,
     current_log: jnp.ndarray,
@@ -504,7 +512,10 @@ def plot_results(
 
     # Plotting the trap trajectory, currents, U0, and omega.
     fig, axs = plt.subplots(4, 3, figsize=(14, 12))
-    fig.suptitle(f"Optimization results: {setting_info}", fontsize=12)
+    description = ", ".join(
+        f"{key}={value}" for key, value in parameters.items() if key != "wire_ids"
+    )
+    fig.suptitle(f"Optimization results: {description}", fontsize=12)
 
     plot_x_over_time     (axs[0, 0], trajectory, target_rs, shifting_wire_x)
     plot_xy_trajectory   (axs[0, 1], trajectory, target_rs, shifting_wire_x)
@@ -627,7 +638,7 @@ if __name__ == "__main__":
     # fmt: off
     parser = argparse.ArgumentParser(description="Transport Optimizer for Atom Chip")
     parser.add_argument("--result_path",    type=str,   default=None,     help="Path saved results")
-    parser.add_argument("--T",              type=int,   default=1000,     help="Number of time steps")
+    parser.add_argument("--T",              type=int,   default=50000,    help="Number of time steps")
     parser.add_argument("--num_shifts",     type=int,   default=6,        help="Number of shifts to apply to the trap")
     parser.add_argument("--reg",            type=float, default=1e-2,     help="Regularization parameter")
     parser.add_argument("--n_atoms",        type=int,   default=int(1e5), help="Number of atoms in the BEC")
@@ -641,12 +652,12 @@ if __name__ == "__main__":
         # remove the result_path argument
         del args.result_path
         if args.wire_ids is None:
-            # wire_ids: jnp.ndarray = jnp.arange(0, 15, dtype=jnp.int32)  # All wires
-            # wire_ids: jnp.ndarray = jnp.arange(0, 5, dtype=jnp.int32)  # shifting wires except zero current wire
-            # wire_ids: jnp.ndarray = jnp.concatenate([jnp.arange(0, 6), jnp.array([6, 14])], dtype=jnp.int32)
-            # wire_ids: jnp.ndarray = jnp.concatenate([jnp.arange(0, 6), jnp.arange(7, 14)], dtype=jnp.int32)
-            # wire_ids: jnp.ndarray = jnp.array([5, 6, 14], dtype=jnp.int32) # Only those with 0 current in the start
-            wire_ids: jnp.ndarray = jnp.arange(0, 6, dtype=jnp.int32),  # Only shifting wires
+            # wire_ids = jnp.arange(0, 15, dtype=jnp.int32)     # All wires
+            # wire_ids = jnp.arange(0, 5, dtype=jnp.int32)      # shifting wires except zero current wire
+            # wire_ids = jnp.concatenate([jnp.arange(0, 6) jnp.array([6, 14])], dtype=jnp.int32)
+            # wire_ids = jnp.concatenate([jnp.arange(0, 6) jnp.arange(7, 14)], dtype=jnp.int32)
+            # wire_ids = jnp.array([5, 6, 14], dtype=jnp.int32) # Only those with 0 current in the start
+            wire_ids = jnp.arange(0, 6, dtype=jnp.int32)        # Only shifting wires
             args.wire_ids = wire_ids
         else:
             args.wire_ids = jnp.array(args.wire_ids, dtype=jnp.int32)
