@@ -1,9 +1,10 @@
+import argparse
+import json
 from typing import List, Tuple
 import jax
 import jax.numpy as jnp
 import matplotlib.pyplot as plt
 import numpy as np  # formatting arrays only
-import pandas as pd
 from scipy.optimize import minimize
 import atom_chip as ac
 import transport_initializer
@@ -196,26 +197,21 @@ def distribute_currents_to_wires(I_wires: jnp.ndarray) -> jnp.ndarray:
 # ----------------------------------------------------------------------------------------------------
 # Main function to run the transport optimization.
 # ----------------------------------------------------------------------------------------------------
-def main():
+# fmt: off
+def main(
+    T              : int = 1000,
+    num_shifts     : int = 6,
+    reg            : float = 1e-2,    # regularization ∈ [1e-4, 1e-1]
+    n_atoms        : int = int(1e5),  # Number of atoms in the BEC
+    I_max_shifting : float = 1.0,     # A, max current for shifting wires
+    I_max_guiding  : float = 14.0,    # A, max current for guiding wires
+    wire_ids: jnp.ndarray = jnp.arange(0, 6, dtype=jnp.int32),  # Only shifting wires
+):
+# fmt: on
+
     # 1. Simulation parameters
-    T = 1000
-    num_shifts = 6
-    λ = 1e-2  # λ ∈ [1e-4, 1e-1]
-    n_atoms = int(1e5)  # Number of atoms in the BEC
-
-    I_max_shifting = 1.0  # A, max current for shifting wires
-    I_max_guiding = 14.0  # A, max current for guiding wires
-
-    # Mask to disable guiding wires during the optimization
-    # wire_ids = jnp.arange(0, 15, dtype=jnp.int32)  # All wires
-    wire_ids = jnp.arange(0, 6, dtype=jnp.int32)  # Only shifting wires
-    # wire_ids = jnp.arange(0, 5, dtype=jnp.int32)  # shifting wires except zero current wire
-    # wire_ids = jnp.concatenate([jnp.arange(0, 6), jnp.array([6, 14])], dtype=jnp.int32)
-    # wire_ids = jnp.concatenate([jnp.arange(0, 6), jnp.arange(7, 14)], dtype=jnp.int32)
-    # wire_ids = jnp.array([5, 6, 14], dtype=jnp.int32) # Only those with 0 current in the start
     mask = jnp.zeros((15,)).at[wire_ids].set(1.0)
-
-    setting_info = f"T={T}, num_shifts={num_shifts}, λ={λ}"
+    setting_info = f"T={T}, num_shifts={num_shifts}, λ={reg}"
     print(f"Transport optimization settings: {setting_info}, mask={mask}")
 
     # 2. Transport initial setup
@@ -263,39 +259,39 @@ def main():
         mu_ref=mu_ref,
         destination_r=destination_r,
         T=T,
-        λ=λ,
+        reg=reg,
         n_atoms=n_atoms,
     )
 
     # 5. Save the results as a CSV file
-    result_df = pd.DataFrame(
-        {
-            "step": jnp.arange(len(trajectory)),
-            "x": trajectory[:, 0],
-            "y": trajectory[:, 1],
-            "z": trajectory[:, 2],
-            "target_x": [r[0] for r in target_rs],
-            "target_y": [r[1] for r in target_rs],
-            "target_z": [r[2] for r in target_rs],
-            "U0": U0s,
-            "omega_x": [o[0] for o in omegas],
-            "omega_y": [o[1] for o in omegas],
-            "omega_z": [o[2] for o in omegas],
-            "BEC_radii_x": [r[0] for r in BEC_radii],
-            "BEC_radii_y": [r[1] for r in BEC_radii],
-            "BEC_radii_z": [r[2] for r in BEC_radii],
-            "TF_radii_x": [r[0] for r in TF_radii],
-            "TF_radii_y": [r[1] for r in TF_radii],
-            "TF_radii_z": [r[2] for r in TF_radii],
-            "mu": mu_vals,
-        }
+    save_results(
+        setting_info,
+        trajectory,
+        target_rs,
+        current_log,
+        U0s,
+        omegas,
+        BEC_radii,
+        TF_radii,
+        mu_vals,
+        n_atoms,
+        save_path="transport_results.json",
     )
-    for i in range(15):
-        result_df[f"current_{i}"] = [current[i] for current in current_log]
-    result_df.to_csv("transport_results.csv", index=False)
 
     # 4. Plot the results
-    plot_results(setting_info, trajectory, target_rs, current_log, U0s, omegas, BEC_radii, TF_radii, mu_vals, n_atoms)
+    plot_results(
+        setting_info,
+        trajectory,
+        target_rs,
+        current_log,
+        U0s,
+        omegas,
+        BEC_radii,
+        TF_radii,
+        mu_vals,
+        n_atoms,
+        save_path="transport_results.png",
+    )
 
 
 # ----------------------------------------------------------------------------------------------------
@@ -317,7 +313,7 @@ def optimize_transport(
     mu_ref         : float,        # Reference chemical potential
     destination_r  : jnp.ndarray,  # Desired final position of the trap (shape: (3,))
     T              : int,          # Number of time steps
-    λ              : float,        # Regularization parameter
+    reg            : float,        # Regularization parameter
     n_atoms        : int,          # Number of atoms in the BEC (for chemical potential calculation)
 ):
 # fmt: on
@@ -358,7 +354,7 @@ def optimize_transport(
     omegas      = [ omega_ref ]
     BEC_radii   = [ BEC_radii_ref ]   # Non-interacting BEC radii
     TF_radii    = [ TF_radii_ref  ]  # Thomas-Fermi radii
-    mu_vals     = [ mu_ref      ]  # Chemical potential
+    mu_vals     = [ mu_ref    ]  # Chemical potential
     error_log   = []
     # fmt: on
 
@@ -378,8 +374,8 @@ def optimize_transport(
         # Compute the implicit gradient and update currents
         J = compute_dr_dI(r_now, I_wires)
         cond_J = jnp.linalg.cond(J)
-        adjusted_λ = λ * (1 + jnp.linalg.norm(cond_J))
-        delta_I = jnp.linalg.solve(J.T @ J + adjusted_λ * jnp.eye(J.shape[1]), J.T @ delta_r)
+        adjusted_reg = reg * (1 + jnp.linalg.norm(cond_J))
+        delta_I = jnp.linalg.solve(J.T @ J + adjusted_reg * jnp.eye(J.shape[1]), J.T @ delta_r)
         I_wires = I_wires + delta_I * mask  # Apply mask to restrict current updates
         I_wires = jnp.clip(I_wires, -I_limits, I_limits)
 
@@ -441,6 +437,54 @@ def format_array(array: jnp.ndarray) -> str:
     )
 
 
+def save_results(
+    setting_info: str,
+    trajectory: jnp.ndarray,
+    target_rs: jnp.ndarray,
+    current_log: jnp.ndarray,
+    U0s: jnp.ndarray,
+    omegas: jnp.ndarray,
+    BEC_radii: jnp.ndarray,
+    TF_radii: jnp.ndarray,
+    mu_vals: jnp.ndarray,
+    n_atoms: int,
+    save_path: str,
+):
+    """
+    Save the results into a JSON file
+    """
+    results = {
+        "setting_info": setting_info,
+        "trajectory": trajectory.tolist(),
+        "target_rs": target_rs.tolist(),
+        "current_log": current_log.tolist(),
+        "U0s": U0s.tolist(),
+        "omegas": omegas.tolist(),
+        "BEC_radii": BEC_radii.tolist(),
+        "TF_radii": TF_radii.tolist(),
+        "mu_vals": mu_vals.tolist(),
+        "n_atoms": n_atoms,
+    }
+    with open(save_path, 'w') as f:
+        json.dump(results, f, indent=4)
+    print(f"Results saved to {save_path}")
+
+
+def load_results(file_path: str) -> dict:
+    """
+    Load the results from a JSON file.
+    """
+    with open(file_path, 'r') as f:
+        results = json.load(f)
+    print(f"Results loaded from {file_path}")
+
+    # Convert lists back to jnp.array except for setting_info
+    for key in results:
+        if isinstance(results[key], list):
+            results[key] = jnp.array(results[key])
+    return results
+
+
 # fmt: off
 def plot_results(
     setting_info: str,
@@ -453,6 +497,7 @@ def plot_results(
     TF_radii: jnp.ndarray,
     mu_vals: jnp.ndarray,
     n_atoms: int,
+    save_path: str = None,
 ):
     # Collect x positions of shifting wires for plotting
     shifting_wire_x = jnp.array([wire[0][0] for wire in SHIFTING_WIRES[14:21]])  # Collect x positions of shifting wires
@@ -477,7 +522,9 @@ def plot_results(
     plot_wire_currents   (axs[3, 0], current_log, wire_indices=[9, 10, 11])
 
     plt.tight_layout()
-    plt.savefig("transport.png", dpi=300)
+    if save_path:
+        plt.savefig(save_path, dpi=300)
+        print(f"Plots saved to {save_path}")
     plt.show()
 # fmt: on
 
@@ -487,9 +534,9 @@ def plot_x_over_time(ax: plt.Axes, trajectory: jnp.ndarray, trajectory_ref: jnp.
     x = trajectory[:, 0]
     x_ref = trajectory_ref[:, 0]
     for wire_x in shifting_wire_x:
-        ax.axhline(wire_x, linestyle="--", color="gray", alpha=0.5, linewidth=0.5)
-    ax.plot(x_ref, linestyle="-", label="Target x position", color="orange")
-    ax.plot(x, marker="o", label="x position", markersize=0.5)
+        ax.axhline(wire_x, linestyle="--", color="gray", linewidth=0.5)
+    ax.plot(x_ref, label="Target x position", color="orange", marker=".", markersize=0.1)
+    ax.plot(x, label="x position", markersize=0.1)
     ax.set_title("Trap x Position Over Time")
     ax.set_xlabel("Step")
     ax.set_ylabel("x (mm)")
@@ -503,9 +550,9 @@ def plot_xy_trajectory(
     x, y = trajectory[:, 0], trajectory[:, 1]
     x_ref, y_ref = trajectory_ref[:, 0], trajectory_ref[:, 1]
     for wire_x in shifting_wire_x:
-        ax.axvline(wire_x, linestyle="--", color="gray", alpha=0.5, linewidth=0.5)
-    ax.plot(x_ref, y_ref, linestyle="-", label="Target x-y position", color="orange")
-    ax.plot(x, y, marker="o", label="x-y position", markersize=0.5)
+        ax.axvline(wire_x, linestyle="--", color="gray", linewidth=0.5)
+    ax.plot(x_ref, y_ref, label="Target x-y position", color="orange", linewidth=1.0)
+    ax.plot(x, y, label="x-y position", markersize=0.1)
     ax.set_title("Trap Trajectory (x-y)")
     ax.set_xlabel("x (mm)")
     ax.set_ylabel("y (mm)")
@@ -519,9 +566,9 @@ def plot_xz_trajectory(
     x, z = trajectory[:, 0], trajectory[:, 2]
     x_ref, z_ref = trajectory_ref[:, 0], trajectory_ref[:, 2]
     for wire_x in shifting_wire_x:
-        ax.axvline(wire_x, linestyle="--", color="gray", alpha=0.5, linewidth=0.5)
-    ax.plot(x_ref, z_ref, linestyle="-", label="Target x-z position", color="orange")
-    ax.plot(x, z, marker="o", label="x-z position", markersize=0.5)
+        ax.axvline(wire_x, linestyle="--", color="gray", linewidth=0.5)
+    ax.plot(x_ref, z_ref, label="Target x-z position", color="orange", linewidth=1.0)
+    ax.plot(x, z, label="x-z position", markersize=0.1)
     ax.set_title("Trap Trajectory (x-z)")
     ax.set_xlabel("x (mm)")
     ax.set_ylabel("z (mm)")
@@ -531,7 +578,7 @@ def plot_xz_trajectory(
 def plot_wire_currents(ax: plt.Axes, current_log: jnp.ndarray, wire_indices: List[int]):
     # Plot wire currents over time.
     for i in wire_indices:
-        ax.plot(current_log[:, i], label=f"Wire {i}")
+        ax.plot(current_log[:, i], label=f"Wire {i}", markersize=0.1)
     ax.set_title("Wire Currents Over Time")
     ax.set_xlabel("Step")
     ax.set_ylabel("Current (A)")
@@ -540,7 +587,7 @@ def plot_wire_currents(ax: plt.Axes, current_log: jnp.ndarray, wire_indices: Lis
 
 def plot_trap_potential(ax: plt.Axes, U0_vals: List[float]):
     # Plot U0 (trap potential energy) over time.
-    ax.plot(U0_vals, marker="o", label="U0", markersize=0.5)
+    ax.plot(U0_vals, label="U0", markersize=0.1)
     ax.set_title("Trap Potential Energy (U0) Over Time")
     ax.set_xlabel("Step")
     ax.set_ylabel("U0 (J)")
@@ -550,7 +597,7 @@ def plot_trap_potential(ax: plt.Axes, U0_vals: List[float]):
 def plot_trap_frequencies(ax: plt.Axes, omega_vals: jnp.ndarray):
     # Plot trap frequencies over time.
     for i, label in enumerate(["$\\omega_x$", "$\\omega_y$", "$\\omega_z$"]):
-        ax.plot(omega_vals[:, i], marker="o", label=label, markersize=0.5)
+        ax.plot(omega_vals[:, i], label=label, markersize=0.1)
     ax.set_title("Trap Frequencies Over Time")
     ax.set_xlabel("Step")
     ax.set_ylabel("Frequency (Hz)")
@@ -560,7 +607,7 @@ def plot_trap_frequencies(ax: plt.Axes, omega_vals: jnp.ndarray):
 def plot_trap_radii(ax: plt.Axes, radii_vals: jnp.ndarray, title: str):
     # Plot BEC radii over time.
     for i, label in enumerate(["$r_x$", "$r_y$", "$r_z$"]):
-        ax.plot(radii_vals[:, i], marker="o", label=f"{label} {i + 1}", markersize=0.5)
+        ax.plot(radii_vals[:, i], label=f"{label} {i + 1}", markersize=0.1)
     ax.set_title(f"{title} Over Time")
     ax.set_xlabel("Step")
     ax.set_ylabel("Radius (m)")
@@ -569,7 +616,7 @@ def plot_trap_radii(ax: plt.Axes, radii_vals: jnp.ndarray, title: str):
 
 def plot_mu_values(ax: plt.Axes, mu_vals: jnp.ndarray):
     # Plot chemical potential over time.
-    ax.plot(mu_vals, marker="o", label="Chemical Potential", markersize=0.5)
+    ax.plot(mu_vals, label="Chemical Potential", markersize=0.1)
     ax.set_title("Chemical Potential Over Time")
     ax.set_xlabel("Step")
     ax.set_ylabel("Chemical Potential (J)")
@@ -577,4 +624,35 @@ def plot_mu_values(ax: plt.Axes, mu_vals: jnp.ndarray):
 
 
 if __name__ == "__main__":
-    main()
+    # fmt: off
+    parser = argparse.ArgumentParser(description="Transport Optimizer for Atom Chip")
+    parser.add_argument("--result_path",    type=str,   default=None,     help="Path saved results")
+    parser.add_argument("--T",              type=int,   default=1000,     help="Number of time steps")
+    parser.add_argument("--num_shifts",     type=int,   default=6,        help="Number of shifts to apply to the trap")
+    parser.add_argument("--reg",            type=float, default=1e-2,     help="Regularization parameter")
+    parser.add_argument("--n_atoms",        type=int,   default=int(1e5), help="Number of atoms in the BEC")
+    parser.add_argument("--I_max_shifting", type=float, default=1.0,      help="Max current for shifting wires (A)")
+    parser.add_argument("--I_max_guiding",  type=float, default=14.0,     help="Max current for guiding wires (A)")
+    parser.add_argument("--wire_ids",       type=int, nargs='*',
+                        help="List of wire IDs to optimize (default: all shifting wires)")
+    args = parser.parse_args()
+
+    if args.result_path is None:
+        # remove the result_path argument
+        del args.result_path
+        if args.wire_ids is None:
+            # wire_ids: jnp.ndarray = jnp.arange(0, 15, dtype=jnp.int32)  # All wires
+            # wire_ids: jnp.ndarray = jnp.arange(0, 5, dtype=jnp.int32)  # shifting wires except zero current wire
+            # wire_ids: jnp.ndarray = jnp.concatenate([jnp.arange(0, 6), jnp.array([6, 14])], dtype=jnp.int32)
+            # wire_ids: jnp.ndarray = jnp.concatenate([jnp.arange(0, 6), jnp.arange(7, 14)], dtype=jnp.int32)
+            # wire_ids: jnp.ndarray = jnp.array([5, 6, 14], dtype=jnp.int32) # Only those with 0 current in the start
+            wire_ids: jnp.ndarray = jnp.arange(0, 6, dtype=jnp.int32),  # Only shifting wires
+            args.wire_ids = wire_ids
+        else:
+            args.wire_ids = jnp.array(args.wire_ids, dtype=jnp.int32)
+        print(f"Using wire IDs: {args.wire_ids}")
+        main(**vars(args))
+    else:
+        # Load results from a CSV file if a path is provided
+        results = load_results(args.result_path)
+        plot_results(**results)
