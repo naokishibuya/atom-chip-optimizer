@@ -1,6 +1,7 @@
 # Don't want to track these files in git
 *.zip
 *.png
+results/
 
 # macOS system files
 .DS_Store

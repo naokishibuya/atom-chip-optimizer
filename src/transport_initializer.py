@@ -33,10 +33,10 @@ SHIFTING_WIRE_CURRENTS  : List[float] = [0.53, 0.89, -0.97, 0.89, 0.53, 0]  # Sh
 #-------------------------------------------------------------
 GUIDING_WIRE_LENGTH     : float = 62.0  # Guiding wire length
 PBC_PIN_LENGTH          : float = 50.0  # PCB pin length (leg length)
-GUIDING_WIRE_CURRENT_0 : float = -3.7  # Central guiding wire current (A)
-GUIDING_WIRE_CURRENT_1 : float = 13.8  # Outer guiding wire current (A)
-GUIDING_WIRE_CURRENTS  : List[float] = [
-                          0, # PCB Wire Q4
+GUIDING_WIRE_CURRENT_0  : float = -3.7  # Central guiding wire current (A)
+GUIDING_WIRE_CURRENT_1  : float = 13.8  # Outer guiding wire current (A)
+GUIDING_WIRE_CURRENTS   : List[float] = [
+                         0, # PCB Wire Q4
     GUIDING_WIRE_CURRENT_1, # PCB Wire Q3
     GUIDING_WIRE_CURRENT_1, # PCB Wire Q2
     GUIDING_WIRE_CURRENT_0, # PCB Wire Q1
@@ -44,7 +44,7 @@ GUIDING_WIRE_CURRENTS  : List[float] = [
     GUIDING_WIRE_CURRENT_0, # PCB Wire Q1'
     GUIDING_WIRE_CURRENT_1, # PCB Wire Q2'
     GUIDING_WIRE_CURRENT_1, # PCB Wire Q3'
-                          0, # PCB Wire Q4'
+                         0, # PCB Wire Q4'
 ]
 
 #-------------------------------------------------------------

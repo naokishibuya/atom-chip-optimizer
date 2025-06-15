@@ -1,6 +1,9 @@
 import argparse
+import datetime
 import json
-from typing import List, Tuple
+import os
+import uuid
+from typing import Callable, List, Tuple
 import jax
 import jax.numpy as jnp
 import matplotlib.pyplot as plt
@@ -124,6 +127,241 @@ def make_search_options(initial_guess) -> ac.potential.AnalysisOptions:
     )
 
 
+# Utility class for dictionary key access
+class attrdict(dict):
+    def __init__(self, *args, **kwargs):
+        dict.__init__(self, *args, **kwargs)
+        self.__dict__ = self
+
+
+# ----------------------------------------------------------------------------------------------------
+# Optimize the transport of the atom chip trap.
+# ----------------------------------------------------------------------------------------------------
+def optimize_transport(params: attrdict):
+    # 1. Simulation parameters
+    # select which wires to optimize
+    wire_ids = jnp.array(params.wire_ids, dtype=jnp.int32)
+    mask = jnp.zeros((15,)).at[wire_ids].set(1.0)
+    print(f"Transport optimization settings: {params}, mask={mask}")
+
+    # 1st and 2nd derivatives are 0 at s = 0 and s = 1
+    def smoothstep_quintic(s: float) -> jnp.ndarray:
+        return 10 * s**3 - 15 * s**4 + 6 * s**5  # C² at both ends
+
+    # Cosine schedule (range [0, 1] over finite time steps t over duration T)
+    def cosine_schedule(s: float) -> jnp.ndarray:
+        return 0.5 * (1 - jnp.cos(jnp.pi * s))
+
+    schedule_func = {
+        "smoothstep": smoothstep_quintic,
+        "cosine": cosine_schedule,
+    }[params.scheduler]
+
+    # 2. Transport initial setup
+    wire_config = setup_wire_config()
+    bias_config = transport_initializer.setup_bias_config()
+
+    I_shifting_wires = jnp.array(transport_initializer.SHIFTING_WIRE_CURRENTS, dtype=jnp.float64)
+    I_guiding_wires = jnp.array(transport_initializer.GUIDING_WIRE_CURRENTS, dtype=jnp.float64)
+    I_start = jnp.concatenate([I_shifting_wires, I_guiding_wires])
+    I_limits = jnp.concatenate(
+        [
+            jnp.ones_like(I_shifting_wires) * params.I_max_shifting,  # Shifting wires limits
+            jnp.ones_like(I_guiding_wires) * params.I_max_guiding,  # Guiding wires limits
+        ]
+    )  # shape: (15,)
+
+    # 3. Reference values for the trap
+    atom_chip = transport_initializer.build_atom_chip()
+    analysis = transport_initializer.analyze_atom_chip(atom_chip)
+    r0_ref = analysis.potential.minimum.position
+    U0_ref = analysis.potential.minimum.value
+    omega_ref = analysis.potential.trap.frequency
+    BEC_radii_ref = analysis.potential.bec.radii  # non-interacting BEC radii
+    TF_radii_ref = analysis.potential.tf.radii  # Thomas-Fermi radii
+    mu_ref = analysis.potential.tf.mu  # Chemical potential
+    destination_r = calculate_destination(r0_ref, params.num_shifts, shifting_wire_distance=0.4)  # mm
+
+    print(f"Initial trap pos: {r0_ref}, U0: {U0_ref:.4g}")
+    print(f"Trap frequency: {omega_ref} (Hz) radii: {BEC_radii_ref} (m) TF: {TF_radii_ref} (m) mu: {mu_ref:.4g} (J)")
+    print(f"Desired final position: {destination_r}")
+
+    # 4. Optimize the transport
+    results, error_log = generate_schedule(
+        atom=atom_chip.atom,
+        wire_config=wire_config,
+        bias_config=bias_config,
+        I_start=I_start,
+        I_limits=I_limits,
+        mask=mask,
+        r0_ref=r0_ref,
+        U0_ref=U0_ref,
+        omega_ref=omega_ref,
+        BEC_radii_ref=BEC_radii_ref,
+        TF_radii_ref=TF_radii_ref,
+        mu_ref=mu_ref,
+        destination_r=destination_r,
+        schedule_func=schedule_func,
+        T=params.T,
+        reg=params.reg,
+        n_atoms=params.n_atoms,
+    )
+
+    # 5. Save the results
+    print(params)
+    results_dir = create_results_dir()
+
+    save_results(params, results, error_log, results_dir)
+
+    # 6. Plot the results
+    plot_results(params, results, results_dir)
+
+
+# ----------------------------------------------------------------------------------------------------
+# Generate the transport schedule.
+# ----------------------------------------------------------------------------------------------------
+# fmt: off
+def generate_schedule(
+    atom           : ac.Atom,
+    wire_config    : ac.atom_chip.WireConfig,
+    bias_config    : ac.field.BiasConfig,
+    I_start        : jnp.ndarray,  # Initial currents for the wires (shape: (15,))
+    I_limits       : jnp.ndarray,  # Optional limits for the currents (shape: (15,))
+    mask           : jnp.ndarray,  # Mask to restrict current updates (shape: (15,))
+    r0_ref         : jnp.ndarray,  # Reference position of the trap at t=0 (shape: (3,))
+    U0_ref         : float,        # Reference potential energy of the trap
+    omega_ref      : jnp.ndarray,  # Reference trap frequencies (shape: (3,))
+    BEC_radii_ref  : jnp.ndarray,  # Reference BEC radii (shape: (3,))
+    TF_radii_ref   : jnp.ndarray,  # Reference Thomas-Fermi radii (shape: (3,))
+    mu_ref         : float,        # Reference chemical potential
+    destination_r  : jnp.ndarray,  # Desired final position of the trap (shape: (3,))
+    schedule_func  : Callable[[float], jnp.ndarray],  # Scheduler function
+    T              : int,          # Number of time steps
+    reg            : float,        # Regularization parameter
+    n_atoms        : int,          # Number of atoms in the BEC (for chemical potential calculation)
+) -> Tuple[attrdict, List]:
+# fmt: on
+    @jax.jit
+    def trap_U(r: jnp.ndarray, I_wires: jnp.ndarray) -> float:
+        wire_currents = distribute_currents_to_wires(I_wires)
+        U, _, _ = ac.atom_chip.trap_potential_energies(
+            jnp.atleast_2d(r), atom, wire_config, wire_currents, bias_config
+        )
+        return U[0]
+
+    # Trap gradient
+    # fmt: off
+    grad_U_r  = jax.grad(trap_U, argnums=0)      # Gradient of potential energy w.r.t. position r
+    hess_U_r  = jax.jacfwd(grad_U_r, argnums=0)  # Hessian of potential energy w.r.t. position r
+    cross_jac = jax.jacfwd(grad_U_r, argnums=1)  # Cross Jacobian of potential energy w.r.t. wire currents I_wires
+    # fmt: on
+
+    # Implicit gradient dr/dI = -H^{-1} @ dgrad/dI
+    @jax.jit
+    def compute_dr_dI(r0, I_wires):
+        H = hess_U_r(r0, I_wires)
+        J = cross_jac(r0, I_wires)
+        return -jnp.linalg.solve(H, J)
+
+    @jax.jit
+    def r_target(t: int, T: int) -> jnp.ndarray:
+        s = t / T  # Normalize time step to [0, 1]
+        return r0_ref + schedule_func(s) * (destination_r - r0_ref)
+
+    @jax.jit
+    def implicit_gradient(I_wires: jnp.ndarray, r_now: jnp.ndarray, r_next: jnp.ndarray) -> jnp.ndarray:
+        delta_r = r_next - r_now
+        J = compute_dr_dI(r_now, I_wires)
+        alpha = reg * (1 + jnp.linalg.cond(J))
+        delta_I = jnp.linalg.solve(J.T @ J + alpha * jnp.eye(J.shape[1]), J.T @ delta_r)
+        return delta_I
+
+    # fmt: off
+    I_wires     = I_start
+    trajectory  = [ r0_ref    ]
+    target_rs   = [ r0_ref    ]
+    current_log = [ I_wires   ]
+    U0s         = [ U0_ref    ]
+    omegas      = [ omega_ref ]
+    BEC_radii   = [ BEC_radii_ref ]   # Non-interacting BEC radii
+    TF_radii    = [ TF_radii_ref  ]  # Thomas-Fermi radii
+    mu_vals     = [ mu_ref    ]  # Chemical potential
+    error_log   = []
+    # fmt: on
+
+    # Control loop
+    for t in range(T):
+        # Compute the current target position
+        r_now = trajectory[-1]
+        r_next = r_target(t + 1, T)
+
+        # Compute the implicit gradient and update currents
+        delta_I = implicit_gradient(I_wires, r_now, r_next)
+        I_wires = I_wires + delta_I * mask  # Apply mask to restrict current updates
+        I_wires = jnp.clip(I_wires, -I_limits, I_limits)
+
+        # Find the minimum trap position and evaluate the trap
+        wire_currents = distribute_currents_to_wires(I_wires)
+        r_min = find_trap_minimum(atom, wire_config, bias_config, wire_currents, r_now)
+
+        # Evaluate the trap
+        U0, omega, eigenvalues, bec_radii, tf_radii, mu = evaluate_trap(
+            atom, wire_config, bias_config, wire_currents, r_min, n_atoms)
+
+        # Check for NaN or negative eigenvalues in omega
+        message = " ".join([
+            f"Step {t + 1:4d}:",
+            f"r_min={format_array(r_min)}",
+            f"U0={U0:10.4g}",
+            f"omega={format_array(omega)}",
+            f"BEC-radii={format_array(bec_radii)}",
+            f"TF-radii={format_array(tf_radii)}",
+            f"mu={mu:10.4g}",
+        ])
+        print(message)
+
+        if jnp.any(jnp.isnan(omega)) or jnp.any(eigenvalues < 0):
+            error_log.append(f"{message}: NaN or negative eigenvalues!!!")
+            continue
+
+        # Log the results
+        trajectory.append(r_min)
+        target_rs.append(r_next)
+        current_log.append(I_wires)
+        U0s.append(U0)
+        omegas.append(omega)
+        BEC_radii.append(bec_radii)
+        TF_radii.append(tf_radii)
+        mu_vals.append(mu)
+
+    if error_log:
+        print(f"{len(error_log)} errors encountered during optimization!")
+    else:
+        print("Optimization completed successfully without errors.")
+
+    # fmt: off
+    results = attrdict(
+        trajectory  = jnp.stack(trajectory),
+        target_rs   = jnp.stack(target_rs),
+        current_log = jnp.stack(current_log),
+        U0s         = jnp.array(U0s),
+        omegas      = jnp.stack(omegas),
+        BEC_radii   = jnp.stack(BEC_radii),
+        TF_radii    = jnp.stack(TF_radii),
+        mu_vals     = jnp.array(mu_vals),
+    )
+    # fmt: on
+    return results, error_log
+
+
+def format_array(array: jnp.ndarray) -> str:
+    return np.array2string(
+        np.array(array),
+        formatter={"float_kind": lambda x: f"{x: 10.4g}"},
+        separator=" ",
+    )
+
+
 # ----------------------------------------------------------------------------------------------------
 # Evaluate the potential energy and curvature at a fixed position.
 #
@@ -195,347 +433,91 @@ def distribute_currents_to_wires(I_wires: jnp.ndarray) -> jnp.ndarray:
 
 
 # ----------------------------------------------------------------------------------------------------
-# Main function to run the transport optimization.
+# Save and load results to/from a JSON file.
 # ----------------------------------------------------------------------------------------------------
-# fmt: off
-def main(
-    T              : int,
-    num_shifts     : int,
-    reg            : float,       # regularization ∈ [1e-4, 1e-1]
-    n_atoms        : int,         # Number of atoms in the BEC
-    I_max_shifting : float,       # A, max current for shifting wires
-    I_max_guiding  : float,       # A, max current for guiding wires
-    wire_ids       : jnp.ndarray,
-):
-# fmt: on
+def create_results_dir(base_dir="results"):
+    now = datetime.datetime.now()
+    timestamp = now.strftime("%Y%m%d_%H%M%S_%f") # YYYYMMDD_HHMMSS_microseconds
+    run_id_suffix = uuid.uuid4().hex[:6] # Short unique ID
 
-    # 1. Simulation parameters
-    parameters = dict(
-        T=T,
-        num_shifts=num_shifts,
-        reg=reg,
-        n_atoms=n_atoms,
-        I_max_shifting=I_max_shifting,
-        I_max_guiding=I_max_guiding,
-        wire_ids=wire_ids.tolist(),
-    )
-    mask = jnp.zeros((15,)).at[wire_ids].set(1.0)
-    print(f"Transport optimization settings: {parameters}, mask={mask}")
+    folder_name = f"{timestamp}_{run_id_suffix}"
+    full_path = os.path.join(base_dir, folder_name)
 
-    # 2. Transport initial setup
-    wire_config = setup_wire_config()
-    bias_config = transport_initializer.setup_bias_config()
-
-    I_shifting_wires = jnp.array(transport_initializer.SHIFTING_WIRE_CURRENTS, dtype=jnp.float64)
-    I_guiding_wires = jnp.array(transport_initializer.GUIDING_WIRE_CURRENTS, dtype=jnp.float64)
-    I_start = jnp.concatenate([I_shifting_wires, I_guiding_wires])
-    I_limits = jnp.concatenate(
-        [
-            jnp.ones_like(I_shifting_wires) * I_max_shifting,  # Shifting wires limits
-            jnp.ones_like(I_guiding_wires) * I_max_guiding,  # Guiding wires limits
-        ]
-    )  # shape: (15,)
-
-    # 3. Reference values for the trap
-    atom_chip = transport_initializer.build_atom_chip()
-    analysis = transport_initializer.analyze_atom_chip(atom_chip)
-    r0_ref = analysis.potential.minimum.position
-    U0_ref = analysis.potential.minimum.value
-    omega_ref = analysis.potential.trap.frequency
-    BEC_radii_ref = analysis.potential.bec.radii  # non-interacting BEC radii
-    TF_radii_ref = analysis.potential.tf.radii  # Thomas-Fermi radii
-    mu_ref = analysis.potential.tf.mu  # Chemical potential
-    destination_r = calculate_destination(r0_ref, num_shifts, shifting_wire_distance=0.4)  # mm
-
-    print(f"Initial trap pos: {r0_ref}, U0: {U0_ref:.4g}")
-    print(f"Trap frequency: {omega_ref} (Hz) radii: {BEC_radii_ref} (m) TF: {TF_radii_ref} (m) mu: {mu_ref:.4g} (J)")
-    print(f"Desired final position: {destination_r}")
-
-    # 4. Optimize the transport
-    trajectory, target_rs, current_log, U0s, omegas, BEC_radii, TF_radii, mu_vals = optimize_transport(
-        atom=atom_chip.atom,
-        wire_config=wire_config,
-        bias_config=bias_config,
-        I_start=I_start,
-        I_limits=I_limits,
-        mask=mask,
-        r0_ref=r0_ref,
-        U0_ref=U0_ref,
-        omega_ref=omega_ref,
-        BEC_radii_ref=BEC_radii_ref,
-        TF_radii_ref=TF_radii_ref,
-        mu_ref=mu_ref,
-        destination_r=destination_r,
-        T=T,
-        reg=reg,
-        n_atoms=n_atoms,
-    )
-
-    # 5. Save the results as a CSV file
-    save_results(
-        parameters,
-        trajectory,
-        target_rs,
-        current_log,
-        U0s,
-        omegas,
-        BEC_radii,
-        TF_radii,
-        mu_vals,
-        n_atoms,
-        save_path="transport_results.json",
-    )
-
-    # 4. Plot the results
-    plot_results(
-        parameters,
-        trajectory,
-        target_rs,
-        current_log,
-        U0s,
-        omegas,
-        BEC_radii,
-        TF_radii,
-        mu_vals,
-        n_atoms,
-        save_path="transport_results.png",
-    )
+    os.makedirs(full_path, exist_ok=True)
+    return full_path
 
 
-# ----------------------------------------------------------------------------------------------------
-# Optimize the transport of the atom chip trap.
-# ----------------------------------------------------------------------------------------------------
-# fmt: off
-def optimize_transport(
-    atom           : ac.Atom,
-    wire_config    : ac.atom_chip.WireConfig,
-    bias_config    : ac.field.BiasConfig,
-    I_start        : jnp.ndarray,  # Initial currents for the wires (shape: (15,))
-    I_limits       : jnp.ndarray,  # Optional limits for the currents (shape: (15,))
-    mask           : jnp.ndarray,  # Mask to restrict current updates (shape: (15,))
-    r0_ref         : jnp.ndarray,  # Reference position of the trap at t=0 (shape: (3,))
-    U0_ref         : float,        # Reference potential energy of the trap
-    omega_ref      : jnp.ndarray,  # Reference trap frequencies (shape: (3,))
-    BEC_radii_ref  : jnp.ndarray,  # Reference BEC radii (shape: (3,))
-    TF_radii_ref   : jnp.ndarray,  # Reference Thomas-Fermi radii (shape: (3,))
-    mu_ref         : float,        # Reference chemical potential
-    destination_r  : jnp.ndarray,  # Desired final position of the trap (shape: (3,))
-    T              : int,          # Number of time steps
-    reg            : float,        # Regularization parameter
-    n_atoms        : int,          # Number of atoms in the BEC (for chemical potential calculation)
-):
-# fmt: on
-    # Cosine schedule (range [0, 1] over finite time steps t over duration T)
-    def cosine_schedule(t: int, T: int) -> jnp.ndarray:
-        return 0.5 * (1 - jnp.cos(jnp.pi * t / T))
-
-    def r_target(t: int, T: int) -> jnp.ndarray:
-        return r0_ref + cosine_schedule(t, T) * (destination_r - r0_ref)
-
-    @jax.jit
-    def trap_U(r: jnp.ndarray, I_wires: jnp.ndarray) -> float:
-        wire_currents = distribute_currents_to_wires(I_wires)
-        U, _, _ = ac.atom_chip.trap_potential_energies(
-            jnp.atleast_2d(r), atom, wire_config, wire_currents, bias_config
-        )
-        return U[0]
-
-    # Trap gradient
-    # fmt: off
-    grad_U_r  = jax.grad(trap_U, argnums=0)      # Gradient of potential energy w.r.t. position r
-    hess_U_r  = jax.jacfwd(grad_U_r, argnums=0)  # Hessian of potential energy w.r.t. position r
-    cross_jac = jax.jacfwd(grad_U_r, argnums=1)  # Cross Jacobian of potential energy w.r.t. wire currents I_wires
-    # fmt: on
-
-    # Implicit gradient dr/dI = -H^{-1} @ dgrad/dI
-    def compute_dr_dI(r0, I_wires):
-        H = hess_U_r(r0, I_wires)
-        J = cross_jac(r0, I_wires)
-        return -jnp.linalg.solve(H, J)
-
-    # fmt: off
-    I_wires     = I_start
-    trajectory  = [ r0_ref    ]
-    target_rs   = [ r0_ref    ]
-    current_log = [ I_wires   ]
-    U0s         = [ U0_ref    ]
-    omegas      = [ omega_ref ]
-    BEC_radii   = [ BEC_radii_ref ]   # Non-interacting BEC radii
-    TF_radii    = [ TF_radii_ref  ]  # Thomas-Fermi radii
-    mu_vals     = [ mu_ref    ]  # Chemical potential
-    error_log   = []
-    # fmt: on
-
-    # Initialize the trap radii based on the reference values
-    def target_following_ratio(radii, k=10.0):
-        scale = jnp.linalg.norm(radii / BEC_radii_ref - 1.0)
-        return 1.0 - 1.0 / (1.0 + jnp.exp(k * (scale - 0.1)))  # ε ~ 0.1 or 0.2
-
-    # Control loop
-    for t in range(T):
-        # Compute the current target position
-        follow_ratio = target_following_ratio(BEC_radii[-1])
-        r_now = follow_ratio * r_target(t, T) + (1.0 - follow_ratio) * trajectory[-1]  # Average with last position
-        r_next = r_target(t + 1, T)
-        delta_r = r_next - r_now
-
-        # Compute the implicit gradient and update currents
-        J = compute_dr_dI(r_now, I_wires)
-        cond_J = jnp.linalg.cond(J)
-        adjusted_reg = reg * (1 + jnp.linalg.norm(cond_J))
-        delta_I = jnp.linalg.solve(J.T @ J + adjusted_reg * jnp.eye(J.shape[1]), J.T @ delta_r)
-        I_wires = I_wires + delta_I * mask  # Apply mask to restrict current updates
-        I_wires = jnp.clip(I_wires, -I_limits, I_limits)
-
-        # Find the minimum trap position and evaluate the trap
-        wire_currents = distribute_currents_to_wires(I_wires)
-        r_min = find_trap_minimum(atom, wire_config, bias_config, wire_currents, r_now)
-        U0, omega, eigenvalues, bec_radii, tf_radii, mu = evaluate_trap(
-            atom, wire_config, bias_config, wire_currents, r_min, n_atoms)
-        if jnp.any(jnp.isnan(omega)) or jnp.any(eigenvalues < 0):
-            # Handle NaN or negative eigenvalues in omega
-            message = "Encountered NaN or negative eigenvalues in trap evaluation."
-            error_log.append((t, r_min, I_wires, U0, omega, message))
-            continue
-
-        # Log the results
-        trajectory.append(r_min)
-        target_rs.append(r_next)
-        current_log.append(I_wires)
-        U0s.append(U0)
-        omegas.append(omega)
-        BEC_radii.append(bec_radii)
-        TF_radii.append(tf_radii)
-        mu_vals.append(mu)
-
-        print(" ".join([
-            f"Step {t + 1:4d}:",
-            f"r_min={format_array(r_min)}",
-            f"U0={U0:10.4g}",
-            f"omega={format_array(omega)}",
-            f"BEC-radii={format_array(bec_radii)}",
-            f"TF-radii={format_array(tf_radii)}",
-            f"mu={mu:10.4g}",
-        ]))
-
-    if error_log:
-        print(f"Errors encountered during optimization: {len(error_log)} steps with NaN or negative eigenvalues.")
-        for step, r_min, I_wires, U0, omega, message in error_log:
-            print(f"Step {step}: r_min={r_min}, I_wires={I_wires}, U0={U0}, omega={omega}: {message}")
-    else:
-        print("Optimization completed successfully without errors.")
-
-    trajectory  = jnp.stack(trajectory)
-    target_rs   = jnp.stack(target_rs)
-    current_log = jnp.stack(current_log)
-    U0s         = jnp.array(U0s)
-    omegas      = jnp.stack(omegas)
-    BEC_radii   = jnp.stack(BEC_radii)
-    TF_radii    = jnp.stack(TF_radii)
-    mu_vals     = jnp.array(mu_vals)
-
-    return trajectory, target_rs, current_log, U0s, omegas, BEC_radii, TF_radii, mu_vals
-
-
-def format_array(array: jnp.ndarray) -> str:
-    return np.array2string(
-        np.array(array),
-        formatter={"float_kind": lambda x: f"{x: 10.4g}"},
-        separator=" ",
-    )
-
-
-def save_results(
-    parameters: dict,
-    trajectory: jnp.ndarray,
-    target_rs: jnp.ndarray,
-    current_log: jnp.ndarray,
-    U0s: jnp.ndarray,
-    omegas: jnp.ndarray,
-    BEC_radii: jnp.ndarray,
-    TF_radii: jnp.ndarray,
-    mu_vals: jnp.ndarray,
-    n_atoms: int,
-    save_path: str,
-):
+def save_results(params: attrdict, results: attrdict, error_log: List, results_dir: str):
     """
     Save the results into a JSON file
     """
-    results = {
-        "parameters": parameters,
-        "trajectory": trajectory.tolist(),
-        "target_rs": target_rs.tolist(),
-        "current_log": current_log.tolist(),
-        "U0s": U0s.tolist(),
-        "omegas": omegas.tolist(),
-        "BEC_radii": BEC_radii.tolist(),
-        "TF_radii": TF_radii.tolist(),
-        "mu_vals": mu_vals.tolist(),
-        "n_atoms": n_atoms,
-    }
-    with open(save_path, 'w') as f:
+    with open(os.path.join(results_dir, "optimization_params.json"), "w") as f:
+        json.dump(params, f, indent=4)
+
+    results = {key: val.tolist() for key, val in results.items()}
+    with open(os.path.join(results_dir, "optimization_results.json"), "w") as f:
         json.dump(results, f, indent=4)
-    print(f"Results saved to {save_path}")
+    print(f"Results saved to {results_dir}")
+
+    # Save error log if there are any errors
+    if error_log:
+        with open(os.path.join(results_dir, "optimization_errors.json"), "w") as f:
+            json.dump(error_log, f, indent=4)
+        print(f"{len(error_log)} errors!!!")
 
 
-def load_results(file_path: str) -> dict:
+def load_results(results_dir: str) -> Tuple[attrdict, attrdict]:
     """
     Load the results from a JSON file.
     """
-    with open(file_path, 'r') as f:
+    with open(os.path.join(results_dir, "optimization_params.json"), "r") as f:
+        params = json.load(f)
+
+    with open(os.path.join(results_dir, "optimization_results.json"), "r") as f:
         results = json.load(f)
-    print(f"Results loaded from {file_path}")
+    print(f"Results loaded from {results_dir}")
 
     # Convert lists back to jnp.array except for parameters
     for key in results:
-        if isinstance(results[key], list):
-            results[key] = jnp.array(results[key])
-    return results
+        results[key] = jnp.array(results[key])
+    return attrdict(params), attrdict(results)
 
 
+# ----------------------------------------------------------------------------------------------------
+# Plotting functions for the optimization results.
+# ----------------------------------------------------------------------------------------------------
 # fmt: off
-def plot_results(
-    parameters: dict,
-    trajectory: jnp.ndarray,
-    target_rs: jnp.ndarray,
-    current_log: jnp.ndarray,
-    U0s: jnp.ndarray,
-    omegas: jnp.ndarray,
-    BEC_radii: jnp.ndarray,
-    TF_radii: jnp.ndarray,
-    mu_vals: jnp.ndarray,
-    n_atoms: int,
-    save_path: str = None,
-):
+def plot_results(params: attrdict, results: attrdict, results_dir: str = None):
     # Collect x positions of shifting wires for plotting
     shifting_wire_x = jnp.array([wire[0][0] for wire in SHIFTING_WIRES[14:21]])  # Collect x positions of shifting wires
 
     # Plotting the trap trajectory, currents, U0, and omega.
     fig, axs = plt.subplots(4, 3, figsize=(14, 12))
     description = ", ".join(
-        f"{key}={value}" for key, value in parameters.items() if key != "wire_ids"
+        f"{key}={value}" for key, value in params.items()
     )
-    fig.suptitle(f"Optimization results: {description}", fontsize=12)
+    fig.suptitle(f"{description}", fontsize=10)
 
+    trajectory, target_rs = results.trajectory, results.target_rs
     plot_x_over_time     (axs[0, 0], trajectory, target_rs, shifting_wire_x)
     plot_xy_trajectory   (axs[0, 1], trajectory, target_rs, shifting_wire_x)
     plot_xz_trajectory   (axs[0, 2], trajectory, target_rs, shifting_wire_x)
 
-    plot_trap_potential  (axs[2, 1], U0s)
-    plot_mu_values       (axs[3, 1], mu_vals)
-    plot_trap_frequencies(axs[1, 2], omegas)
-    plot_trap_radii      (axs[2, 2], BEC_radii, title="BEC Radii")
-    plot_trap_radii      (axs[3, 2], TF_radii, title=f"TF Radii ({n_atoms} atoms)")
+    plot_trap_potential  (axs[2, 1], results.U0s)
+    plot_mu_values       (axs[3, 1], results.mu_vals)
+    plot_trap_frequencies(axs[1, 2], results.omegas)
+    plot_trap_radii      (axs[2, 2], results.BEC_radii, title="BEC Radii")
+    plot_trap_radii      (axs[3, 2], results.TF_radii, title=f"TF Radii ({params.n_atoms} atoms)")
 
+    current_log = results.current_log
     plot_wire_currents   (axs[1, 1], current_log, wire_indices=[0, 1, 2, 3, 4, 5])
     plot_wire_currents   (axs[1, 0], current_log, wire_indices=[6, 14])
-    plot_wire_currents   (axs[2, 0], current_log, wire_indices=[7, 9, 12, 13])
+    plot_wire_currents   (axs[2, 0], current_log, wire_indices=[7, 8, 12, 13])
     plot_wire_currents   (axs[3, 0], current_log, wire_indices=[9, 10, 11])
 
     plt.tight_layout()
-    if save_path:
-        plt.savefig(save_path, dpi=300)
-        print(f"Plots saved to {save_path}")
+    if results_dir:
+        plt.savefig(os.path.join(results_dir, "optimization_analysis.png"), dpi=300)
     plt.show()
 # fmt: on
 
@@ -634,36 +616,38 @@ def plot_mu_values(ax: plt.Axes, mu_vals: jnp.ndarray):
     ax.legend()
 
 
-if __name__ == "__main__":
+# ----------------------------------------------------------------------------------------------------
+# Main entry point for the script.
+# ----------------------------------------------------------------------------------------------------
+def main():
     # fmt: off
     parser = argparse.ArgumentParser(description="Transport Optimizer for Atom Chip")
-    parser.add_argument("--result_path",    type=str,   default=None,     help="Path saved results")
+    parser.add_argument("--results_dir",    type=str,   default=None,     help="Results directory")
     parser.add_argument("--T",              type=int,   default=50000,    help="Number of time steps")
     parser.add_argument("--num_shifts",     type=int,   default=6,        help="Number of shifts to apply to the trap")
     parser.add_argument("--reg",            type=float, default=1e-2,     help="Regularization parameter")
     parser.add_argument("--n_atoms",        type=int,   default=int(1e5), help="Number of atoms in the BEC")
     parser.add_argument("--I_max_shifting", type=float, default=1.0,      help="Max current for shifting wires (A)")
     parser.add_argument("--I_max_guiding",  type=float, default=14.0,     help="Max current for guiding wires (A)")
-    parser.add_argument("--wire_ids",       type=int, nargs='*',
-                        help="List of wire IDs to optimize (default: all shifting wires)")
+    parser.add_argument("--wire_ids",       type=str, nargs='*', default=[0, 1, 2, 3, 4, 5, 6, 14],
+                        help="List of wire IDs to optimize (default: all shifting wires and outermost guiding wires)")
+    parser.add_argument("--scheduler",      type=str, default="smoothstep",
+                        choices=["smoothstep", "cosine"],
+                        help="Scheduler function to normalize time")
     args = parser.parse_args()
+    # fmt: on
 
-    if args.result_path is None:
+    if args.results_dir is None:
         # remove the result_path argument
-        del args.result_path
-        if args.wire_ids is None:
-            # wire_ids = jnp.arange(0, 15, dtype=jnp.int32)     # All wires
-            # wire_ids = jnp.arange(0, 5, dtype=jnp.int32)      # shifting wires except zero current wire
-            # wire_ids = jnp.concatenate([jnp.arange(0, 6) jnp.array([6, 14])], dtype=jnp.int32)
-            # wire_ids = jnp.concatenate([jnp.arange(0, 6) jnp.arange(7, 14)], dtype=jnp.int32)
-            # wire_ids = jnp.array([5, 6, 14], dtype=jnp.int32) # Only those with 0 current in the start
-            wire_ids = jnp.arange(0, 6, dtype=jnp.int32)        # Only shifting wires
-            args.wire_ids = wire_ids
-        else:
-            args.wire_ids = jnp.array(args.wire_ids, dtype=jnp.int32)
-        print(f"Using wire IDs: {args.wire_ids}")
-        main(**vars(args))
+        del args.results_dir
+
+        # Run the transport optimization
+        optimize_transport(attrdict(**vars(args)))
     else:
         # Load results from a CSV file if a path is provided
-        results = load_results(args.result_path)
-        plot_results(**results)
+        params, results = load_results(args.results_dir)
+        plot_results(params, results)
+
+
+if __name__ == "__main__":
+    main()

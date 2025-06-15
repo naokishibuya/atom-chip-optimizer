@@ -8,22 +8,27 @@ Changes in this version
 • smooth-step up-sampling retained (UPSAMPLE = 20, TRANSPORT_TIME = 10 s)
 """
 
+import argparse
 import numpy as np
+import os
 import jax
 import jax.numpy as jnp
 import matplotlib.pyplot as plt
-from transport_optimizer import load_results
+import atom_chip as ac
+import transport_optimizer
+
 
 # ————————————————————————————————————————————————
 # Helper functions
 # ————————————————————————————————————————————————
-
-
 def normalize(psi, x_um):
     norm = np.sqrt(np.trapezoid(jnp.abs(psi) ** 2, x_um))
     return psi / norm if norm > 0 else psi
 
 
+# ----------------------------------------------------------------------------------------------------
+# Harmonic oscillator ground state
+# ----------------------------------------------------------------------------------------------------
 def ho_ground_state(x_um, centre_um, m, omega):
     """1-D harmonic-oscillator ground state on µm grid."""
     hbar = 1.054_571_817e-34
@@ -33,7 +38,22 @@ def ho_ground_state(x_um, centre_um, m, omega):
     return normalize(psi, x_um)
 
 
-# ——— fully-JAX split-step with lax.scan ———
+# ----------------------------------------------------------------------------------------------------
+# Harmonic oscillator energy
+# ----------------------------------------------------------------------------------------------------
+def ho_energy(psi, x_um, m, omega):
+    hbar = 1.054_571_817e-34
+    dx_m = (x_um[1] - x_um[0]) * 1e-6
+    x_m = x_um * 1e-6
+    grad = (jnp.roll(psi, -1) - jnp.roll(psi, 1)) / (2 * dx_m)
+    T = (hbar**2 / (2 * m)) * jnp.abs(grad) ** 2
+    V = 0.5 * m * omega**2 * x_m**2 * jnp.abs(psi) ** 2
+    return float(np.trapezoid(T + V, x_m))
+
+
+# ----------------------------------------------------------------------------------------------------
+# Time-dependent split-step
+# ----------------------------------------------------------------------------------------------------
 @jax.jit
 def split_step_td_scan(psi0_cplx, V_ts, g1d, dt, dx_m, m):
     """Time-dependent split-step.  V_ts shape = (T, N)."""
@@ -53,32 +73,26 @@ def split_step_td_scan(psi0_cplx, V_ts, g1d, dt, dx_m, m):
     return psiT
 
 
-def ho_energy(psi, x_um, m, omega):
-    hbar = 1.054_571_817e-34
-    dx_m = float((x_um[1] - x_um[0]) * 1e-6)
-    x_m = x_um * 1e-6
-    grad = (jnp.roll(psi, -1) - jnp.roll(psi, 1)) / (2 * dx_m)
-    T = (hbar**2 / (2 * m)) * jnp.abs(grad) ** 2
-    V = 0.5 * m * omega**2 * x_m**2 * jnp.abs(psi) ** 2
-    return float(np.trapezoid(T + V, x_m))
-
-
-# ————————————————————————————————————————————————
+# ----------------------------------------------------------------------------------------------------
 # Main
-# ————————————————————————————————————————————————
-
-
+# ----------------------------------------------------------------------------------------------------
 def main():
+    parser = argparse.ArgumentParser(description="1-D TDGPE transport simulation using JAX.")
+    parser.add_argument("--results_dir", type=str, help="Path to the results directory")
+    parser.add_argument("--upsample", type=int, default=1, help="Upsampling multiplier")
+    parser.add_argument("--transport_time", type=float, default=3, help="transport seconds")
+    args = parser.parse_args()
+
     # optimiser output
-    data = load_results("transport_results.json")
-    traj = data["trajectory"]  # mm
-    omegas = data["omegas"]  # Hz
-    n_atoms = float(data["n_atoms"])
+    params, results = transport_optimizer.load_results(args.results_dir)
+    traj = results.trajectory  # mm
+    omegas = results.omegas  # Hz
+    n_atoms = float(params.n_atoms)
 
     # physical constants
-    m_rb = 1.443_160_60e-25
-    hbar = 1.054_571_817e-34
-    a_s = 5.3e-9
+    hbar = ac.constants.hbar  # J·s
+    m_rb = ac.rb87.mass  # kg
+    a_s = ac.rb87.a_s  # s-wave scattering length (m)
 
     # initial & final trap parameters
     r0_um, rT_um = traj[[0, -1], 0] * 1e3
@@ -98,12 +112,8 @@ def main():
     a_perp = np.sqrt(hbar / (m_rb * omega_perp))
     g1d = 2 * hbar**2 * a_s * n_atoms / (m_rb * a_perp**2)
 
-    # —— up-sample optimiser path with quintic smooth-step ——
-    UPSAMPLE = 1
-    TRANSPORT_TIME = 3.0  # s total
-
     t_idx = np.arange(len(traj))
-    t_fine = np.linspace(0, len(traj) - 1, UPSAMPLE * len(traj))
+    t_fine = np.linspace(0, len(traj) - 1, args.upsample * len(traj))
 
     s = t_idx / t_idx[-1]
     s_smooth = 10 * s**3 - 15 * s**4 + 6 * s**5  # C² smooth-step
@@ -114,7 +124,7 @@ def main():
     w_path = np.interp(t_fine, t_idx, w_smooth)  # rad/s
 
     V_ts = 0.5 * m_rb * (w_path[:, None] ** 2) * ((x[None, :] - r_path[:, None]) * 1e-6) ** 2
-    dt = TRANSPORT_TIME / (V_ts.shape[0] - 1)
+    dt = args.transport_time / (V_ts.shape[0] - 1)
     print(f"dt = {dt:.2e} s  |  steps = {V_ts.shape[0]}")
 
     # time evolution
@@ -126,18 +136,61 @@ def main():
     E_exc = ho_energy(psiT, x, m_rb, wT) - 0.5 * hbar * wT
     print(f"Fidelity F = {fidelity:.6e}\nExcitation ΔE = {E_exc:.3e} J")
 
+    # ---------- plotting helper ------------------------------------------
+    # where does ψT live?  (threshold = 1e-3 of max density)
+    th = 1e-3 * jnp.max(jnp.abs(psiT) ** 2)
+    support_mask = jnp.abs(psiT) ** 2 > th
+    x_min = float(x[support_mask][0])
+    x_max = float(x[support_mask][-1])
+
+    def plot_density(zoom=False):
+        plt.figure(figsize=(8, 5))
+        if not zoom:
+            plt.plot(x, jnp.abs(psi0) ** 2, label=r"$|\psi_0|^2$", alpha=0.4)
+        plt.plot(x, jnp.abs(phi0) ** 2, "--", label=r"$|\phi_0|^2$ target")
+        plt.plot(x, jnp.abs(psiT) ** 2, label=r"$|\psi_T|^2$")
+        plt.xlabel("x (µm)")
+        plt.ylabel("Probability density")
+        plt.title("TDGPE transport — fully-JAX scan (smooth-step path)")
+        if zoom:
+            pad = 2.0  # µm margin
+            plt.xlim(x_min - pad, x_max + pad)
+            plt.title("TDGPE transport (zoom on final trap)")
+        plt.legend()
+        plt.grid(True)
+        plt.tight_layout()
+        tag = "zoom" if zoom else "full"
+        plt.savefig(f"tdgpe_probabilities_{tag}.png", dpi=150)
+        plt.show()
+
+    plot_density(zoom=False)  # full view
+    plot_density(zoom=True)  # zoomed on final state
+
+    # find the first and last non-zero points
+    first_nonzero = np.argmax(jnp.abs(psiT) > 0.01)
+    last_nonzero = len(psiT) - np.argmax(jnp.abs(psiT[::-1]) > 0) - 1
+    print(f"First non-zero at x = {x[first_nonzero]:.2f} µm")
+    print(f"Last non-zero at x = {x[last_nonzero]:.2f} µm")
+    print(f"Range of non-zero values: {x[first_nonzero]:.2f} µm to {x[last_nonzero]:.2f} µm")
+
+    x = x[first_nonzero : last_nonzero + 1]
+    psiT = psiT[first_nonzero : last_nonzero + 1]
+    phi0 = phi0[first_nonzero : last_nonzero + 1]
+
     # plot
     plt.figure(figsize=(8, 5))
-    plt.plot(x, jnp.abs(psi0) ** 2, label="|ψ₀|²")
-    plt.plot(x, jnp.abs(psiT) ** 2, label="|ψ_T|²")
-    plt.plot(x, jnp.abs(phi0) ** 2, label="|φ₀|² target")
+    # plt.plot(x, jnp.abs(psi0) ** 2, label="|ψ₀|²")
+    plt.plot(x, jnp.abs(phi0) ** 2, label="|φ₀|² target", linestyle="--")
+    plt.plot(x, jnp.abs(psiT) ** 2, label="|ψ_T|²", alpha=0.7)
     plt.xlabel("x (µm)")
     plt.ylabel("Probability density")
     plt.title("TDGPE transport — fully-JAX scan (smooth-step path)")
     plt.legend()
     plt.grid(True)
     plt.tight_layout()
-    plt.savefig("tdgpe_probabilities.png", dpi=150)
+
+    save_path = os.path.join(args.results_dir, "tdgpe-1d.png")
+    plt.savefig(save_path, dpi=150)
     plt.show()
 
 
