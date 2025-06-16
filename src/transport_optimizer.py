@@ -1,16 +1,12 @@
 import argparse
-import datetime
-import json
-import os
-import uuid
 from typing import Callable, List, Tuple
 import jax
 import jax.numpy as jnp
-import matplotlib.pyplot as plt
 import numpy as np  # formatting arrays only
 from scipy.optimize import minimize
 import atom_chip as ac
 import transport_initializer
+from transport_reporter import attrdict, report_results
 
 
 # Precompute the wire layout and segment counts
@@ -127,13 +123,6 @@ def make_search_options(initial_guess) -> ac.potential.AnalysisOptions:
     )
 
 
-# Utility class for dictionary key access
-class attrdict(dict):
-    def __init__(self, *args, **kwargs):
-        dict.__init__(self, *args, **kwargs)
-        self.__dict__ = self
-
-
 # ----------------------------------------------------------------------------------------------------
 # Optimize the transport of the atom chip trap.
 # ----------------------------------------------------------------------------------------------------
@@ -206,15 +195,7 @@ def optimize_transport(params: attrdict):
         reg=params.reg,
         n_atoms=params.n_atoms,
     )
-
-    # 5. Save the results
-    print(params)
-    results_dir = create_results_dir()
-
-    save_results(params, results, error_log, results_dir)
-
-    # 6. Plot the results
-    plot_results(params, results, results_dir)
+    report_results(params, results, error_log)
 
 
 # ----------------------------------------------------------------------------------------------------
@@ -271,6 +252,8 @@ def generate_schedule(
     @jax.jit
     def implicit_gradient(I_wires: jnp.ndarray, r_now: jnp.ndarray, r_next: jnp.ndarray) -> jnp.ndarray:
         delta_r = r_next - r_now
+        # make sure non-negative displacement in x but allow negative in y and z
+        delta_r = jnp.array([jnp.maximum(delta_r[0], 0.0), delta_r[1], delta_r[2]])
         J = compute_dr_dI(r_now, I_wires)
         alpha = reg * (1 + jnp.linalg.cond(J))
         delta_I = jnp.linalg.solve(J.T @ J + alpha * jnp.eye(J.shape[1]), J.T @ delta_r)
@@ -433,196 +416,11 @@ def distribute_currents_to_wires(I_wires: jnp.ndarray) -> jnp.ndarray:
 
 
 # ----------------------------------------------------------------------------------------------------
-# Save and load results to/from a JSON file.
-# ----------------------------------------------------------------------------------------------------
-def create_results_dir(base_dir="results"):
-    now = datetime.datetime.now()
-    timestamp = now.strftime("%Y%m%d_%H%M%S_%f") # YYYYMMDD_HHMMSS_microseconds
-    run_id_suffix = uuid.uuid4().hex[:6] # Short unique ID
-
-    folder_name = f"{timestamp}_{run_id_suffix}"
-    full_path = os.path.join(base_dir, folder_name)
-
-    os.makedirs(full_path, exist_ok=True)
-    return full_path
-
-
-def save_results(params: attrdict, results: attrdict, error_log: List, results_dir: str):
-    """
-    Save the results into a JSON file
-    """
-    with open(os.path.join(results_dir, "optimization_params.json"), "w") as f:
-        json.dump(params, f, indent=4)
-
-    results = {key: val.tolist() for key, val in results.items()}
-    with open(os.path.join(results_dir, "optimization_results.json"), "w") as f:
-        json.dump(results, f, indent=4)
-    print(f"Results saved to {results_dir}")
-
-    # Save error log if there are any errors
-    if error_log:
-        with open(os.path.join(results_dir, "optimization_errors.json"), "w") as f:
-            json.dump(error_log, f, indent=4)
-        print(f"{len(error_log)} errors!!!")
-
-
-def load_results(results_dir: str) -> Tuple[attrdict, attrdict]:
-    """
-    Load the results from a JSON file.
-    """
-    with open(os.path.join(results_dir, "optimization_params.json"), "r") as f:
-        params = json.load(f)
-
-    with open(os.path.join(results_dir, "optimization_results.json"), "r") as f:
-        results = json.load(f)
-    print(f"Results loaded from {results_dir}")
-
-    # Convert lists back to jnp.array except for parameters
-    for key in results:
-        results[key] = jnp.array(results[key])
-    return attrdict(params), attrdict(results)
-
-
-# ----------------------------------------------------------------------------------------------------
-# Plotting functions for the optimization results.
-# ----------------------------------------------------------------------------------------------------
-# fmt: off
-def plot_results(params: attrdict, results: attrdict, results_dir: str = None):
-    # Collect x positions of shifting wires for plotting
-    shifting_wire_x = jnp.array([wire[0][0] for wire in SHIFTING_WIRES[14:21]])  # Collect x positions of shifting wires
-
-    # Plotting the trap trajectory, currents, U0, and omega.
-    fig, axs = plt.subplots(4, 3, figsize=(14, 12))
-    description = ", ".join(
-        f"{key}={value}" for key, value in params.items()
-    )
-    fig.suptitle(f"{description}", fontsize=10)
-
-    trajectory, target_rs = results.trajectory, results.target_rs
-    plot_x_over_time     (axs[0, 0], trajectory, target_rs, shifting_wire_x)
-    plot_xy_trajectory   (axs[0, 1], trajectory, target_rs, shifting_wire_x)
-    plot_xz_trajectory   (axs[0, 2], trajectory, target_rs, shifting_wire_x)
-
-    plot_trap_potential  (axs[2, 1], results.U0s)
-    plot_mu_values       (axs[3, 1], results.mu_vals)
-    plot_trap_frequencies(axs[1, 2], results.omegas)
-    plot_trap_radii      (axs[2, 2], results.BEC_radii, title="BEC Radii")
-    plot_trap_radii      (axs[3, 2], results.TF_radii, title=f"TF Radii ({params.n_atoms} atoms)")
-
-    current_log = results.current_log
-    plot_wire_currents   (axs[1, 1], current_log, wire_indices=[0, 1, 2, 3, 4, 5])
-    plot_wire_currents   (axs[1, 0], current_log, wire_indices=[6, 14])
-    plot_wire_currents   (axs[2, 0], current_log, wire_indices=[7, 8, 12, 13])
-    plot_wire_currents   (axs[3, 0], current_log, wire_indices=[9, 10, 11])
-
-    plt.tight_layout()
-    if results_dir:
-        plt.savefig(os.path.join(results_dir, "optimization_analysis.png"), dpi=300)
-    plt.show()
-# fmt: on
-
-
-def plot_x_over_time(ax: plt.Axes, trajectory: jnp.ndarray, trajectory_ref: jnp.ndarray, shifting_wire_x: jnp.ndarray):
-    # Plot x over time.
-    x = trajectory[:, 0]
-    x_ref = trajectory_ref[:, 0]
-    for wire_x in shifting_wire_x:
-        ax.axhline(wire_x, linestyle="--", color="gray", linewidth=0.5)
-    ax.plot(x_ref, label="Target x position", color="orange", marker=".", markersize=0.1)
-    ax.plot(x, label="x position", markersize=0.1)
-    ax.set_title("Trap x Position Over Time")
-    ax.set_xlabel("Step")
-    ax.set_ylabel("x (mm)")
-    ax.legend()
-
-
-def plot_xy_trajectory(
-    ax: plt.Axes, trajectory: jnp.ndarray, trajectory_ref: jnp.ndarray, shifting_wire_x: jnp.ndarray
-):
-    # Plot x-y trap trajectory.
-    x, y = trajectory[:, 0], trajectory[:, 1]
-    x_ref, y_ref = trajectory_ref[:, 0], trajectory_ref[:, 1]
-    for wire_x in shifting_wire_x:
-        ax.axvline(wire_x, linestyle="--", color="gray", linewidth=0.5)
-    ax.plot(x_ref, y_ref, label="Target x-y position", color="orange", linewidth=1.0)
-    ax.plot(x, y, label="x-y position", markersize=0.1)
-    ax.set_title("Trap Trajectory (x-y)")
-    ax.set_xlabel("x (mm)")
-    ax.set_ylabel("y (mm)")
-    ax.legend()
-
-
-def plot_xz_trajectory(
-    ax: plt.Axes, trajectory: jnp.ndarray, trajectory_ref: jnp.ndarray, shifting_wire_x: jnp.ndarray
-):
-    # Plot x-z trap trajectory.
-    x, z = trajectory[:, 0], trajectory[:, 2]
-    x_ref, z_ref = trajectory_ref[:, 0], trajectory_ref[:, 2]
-    for wire_x in shifting_wire_x:
-        ax.axvline(wire_x, linestyle="--", color="gray", linewidth=0.5)
-    ax.plot(x_ref, z_ref, label="Target x-z position", color="orange", linewidth=1.0)
-    ax.plot(x, z, label="x-z position", markersize=0.1)
-    ax.set_title("Trap Trajectory (x-z)")
-    ax.set_xlabel("x (mm)")
-    ax.set_ylabel("z (mm)")
-    ax.legend()
-
-
-def plot_wire_currents(ax: plt.Axes, current_log: jnp.ndarray, wire_indices: List[int]):
-    # Plot wire currents over time.
-    for i in wire_indices:
-        ax.plot(current_log[:, i], label=f"Wire {i}", markersize=0.1)
-    ax.set_title("Wire Currents Over Time")
-    ax.set_xlabel("Step")
-    ax.set_ylabel("Current (A)")
-    ax.legend(fontsize="small", ncol=2)
-
-
-def plot_trap_potential(ax: plt.Axes, U0_vals: List[float]):
-    # Plot U0 (trap potential energy) over time.
-    ax.plot(U0_vals, label="U0", markersize=0.1)
-    ax.set_title("Trap Potential Energy (U0) Over Time")
-    ax.set_xlabel("Step")
-    ax.set_ylabel("U0 (J)")
-    ax.legend()
-
-
-def plot_trap_frequencies(ax: plt.Axes, omega_vals: jnp.ndarray):
-    # Plot trap frequencies over time.
-    for i, label in enumerate(["$\\omega_x$", "$\\omega_y$", "$\\omega_z$"]):
-        ax.plot(omega_vals[:, i], label=label, markersize=0.1)
-    ax.set_title("Trap Frequencies Over Time")
-    ax.set_xlabel("Step")
-    ax.set_ylabel("Frequency (Hz)")
-    ax.legend()
-
-
-def plot_trap_radii(ax: plt.Axes, radii_vals: jnp.ndarray, title: str):
-    # Plot BEC radii over time.
-    for i, label in enumerate(["$r_x$", "$r_y$", "$r_z$"]):
-        ax.plot(radii_vals[:, i], label=f"{label} {i + 1}", markersize=0.1)
-    ax.set_title(f"{title} Over Time")
-    ax.set_xlabel("Step")
-    ax.set_ylabel("Radius (m)")
-    ax.legend()
-
-
-def plot_mu_values(ax: plt.Axes, mu_vals: jnp.ndarray):
-    # Plot chemical potential over time.
-    ax.plot(mu_vals, label="Chemical Potential", markersize=0.1)
-    ax.set_title("Chemical Potential Over Time")
-    ax.set_xlabel("Step")
-    ax.set_ylabel("Chemical Potential (J)")
-    ax.legend()
-
-
-# ----------------------------------------------------------------------------------------------------
 # Main entry point for the script.
 # ----------------------------------------------------------------------------------------------------
 def main():
     # fmt: off
     parser = argparse.ArgumentParser(description="Transport Optimizer for Atom Chip")
-    parser.add_argument("--results_dir",    type=str,   default=None,     help="Results directory")
     parser.add_argument("--T",              type=int,   default=50000,    help="Number of time steps")
     parser.add_argument("--num_shifts",     type=int,   default=6,        help="Number of shifts to apply to the trap")
     parser.add_argument("--reg",            type=float, default=1e-2,     help="Regularization parameter")
@@ -634,19 +432,12 @@ def main():
     parser.add_argument("--scheduler",      type=str, default="smoothstep",
                         choices=["smoothstep", "cosine"],
                         help="Scheduler function to normalize time")
+    parser.add_argument("--transport_time", type=float, default=3.0, help="Transport time in seconds")
     args = parser.parse_args()
     # fmt: on
 
-    if args.results_dir is None:
-        # remove the result_path argument
-        del args.results_dir
-
-        # Run the transport optimization
-        optimize_transport(attrdict(**vars(args)))
-    else:
-        # Load results from a CSV file if a path is provided
-        params, results = load_results(args.results_dir)
-        plot_results(params, results)
+    # Run the transport optimization
+    optimize_transport(attrdict(**vars(args)))
 
 
 if __name__ == "__main__":

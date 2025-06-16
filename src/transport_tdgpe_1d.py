@@ -15,7 +15,8 @@ import jax
 import jax.numpy as jnp
 import matplotlib.pyplot as plt
 import atom_chip as ac
-import transport_optimizer
+from transport_initializer import ATOM as atom
+from transport_reporter import load_results
 
 
 # ————————————————————————————————————————————————
@@ -84,15 +85,15 @@ def main():
     args = parser.parse_args()
 
     # optimiser output
-    params, results = transport_optimizer.load_results(args.results_dir)
+    params, results = load_results(args.results_dir)
     traj = results.trajectory  # mm
     omegas = results.omegas  # Hz
     n_atoms = float(params.n_atoms)
 
     # physical constants
     hbar = ac.constants.hbar  # J·s
-    m_rb = ac.rb87.mass  # kg
-    a_s = ac.rb87.a_s  # s-wave scattering length (m)
+    m_rb = atom.mass  # kg
+    a_s = atom.a_s  # s-wave scattering length (m)
 
     # initial & final trap parameters
     r0_um, rT_um = traj[[0, -1], 0] * 1e3

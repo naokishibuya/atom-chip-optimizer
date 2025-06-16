@@ -70,6 +70,9 @@ COIL_FACTORS  = jnp.array([BIAS_X_COIL_FACTOR , BIAS_Y_COIL_FACTOR , BIAS_Z_COIL
 COIL_CURRENTS = jnp.array([BIAS_X_COIL_CURRENT, BIAS_Y_COIL_CURRENT, BIAS_Z_COIL_CURRENT], dtype=jnp.float64)
 STRAY_FIELDS  = jnp.array([BIAS_X_STRAY_FIELD , BIAS_Y_STRAY_FIELD , BIAS_Z_STRAY_FIELD], dtype=jnp.float64)
 
+# ATOM
+ATOM: ac.Atom = ac.rb87  # Rubidium-87 atom
+
 
 # Define the atom chip wire layout
 def setup_wire_layout(
@@ -292,7 +295,7 @@ def build_atom_chip() -> ac.AtomChip:
     # Create the atom chip with the defined components and bias configuration
     atom_chip = ac.AtomChip(
         name        = "BEC Transport",
-        atom        = ac.rb87,
+        atom        = ATOM,
         components  = top_layer + bottom_layer,
         bias_config = bias_config,
     )
