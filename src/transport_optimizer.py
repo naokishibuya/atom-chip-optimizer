@@ -220,13 +220,18 @@ def optimize_initial_currents(
         r0 = find_trap_minimum(atom, wire_cfg, bias_cfg, np.array(I_phys), np.array(r0))
 
         if i % 10 == 0:
+            # format current values
+            shifting_currents = np.array2string(I_vec[:n_shift], precision=2, separator=", ", suppress_small=True)
+            guiding_currents = np.array2string(I_vec[n_shift:], precision=2, separator=", ", suppress_small=True)
             print(
                 f"[{i:3d}] U0={U0:9.3e}  "
                 f"r0={r0[0]:6.2f} {r0[1]:6.2f} {r0[2]:6.2f}  "
                 f"rel_err={rel_err:6.2e}  "
                 f"|gradU|={jnp.linalg.norm(gradU):6.2e}  "
                 f"|gradU_term|={jnp.linalg.norm(grad_U_term):6.2e}  "
-                f"|step|={(lr * jnp.linalg.norm(grad_U_term)):6.2e}"
+                f"|step|={(lr * jnp.linalg.norm(grad_U_term)):6.2e}  "
+                f"shifting={shifting_currents}  "
+                f"guiding={guiding_currents}"
             )
 
     # split back into shifting / guiding

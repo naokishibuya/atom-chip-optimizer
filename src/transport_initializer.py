@@ -26,16 +26,16 @@ PCB_TOP_OFFSET          : float = 0.0   # PCB top layer vertical offset from ref
 #-------------------------------------------------------------
 SHIFTING_WIRE_LENGTH    : float = 16.0  # Shifting wire length
 SHIFTING_WIRE_WIDTH     : float = 0.3   # Shifting wire width
-# Shifting wire currents (A) for the PCB: T6, T5, T4, T3, T2, T1
-SHIFTING_WIRE_CURRENTS  : List[float] = [ 0.6,  1.05, -0.9 ,  1.05,  0.6,  0.  ]
+# Shifting wire currents (A) for the PCB: T1, T2, T3, T4, T5, T6
+SHIFTING_WIRE_CURRENTS  : List[float] = [0.6, 1.05, -0.9, 1.05, 0.6, 0.0]
 
 #-------------------------------------------------------------
 # Guiding wires for Quadrupole fields
 #-------------------------------------------------------------
 GUIDING_WIRE_LENGTH     : float = 62.0  # Guiding wire length
-PBC_PIN_LENGTH          : float = 50.0  # PCB pin length (leg length)
+PCB_PIN_LENGTH          : float = 50.0  # PCB pin length (leg length)
 # # Guiding wire currents (A) for the PCB: Q4, Q3, Q2, Q1, Q0, Q1', Q2', Q3', Q4'
-GUIDING_WIRE_CURRENTS   : List[float] = [0.0, 13.79, 13.76, -3.78, -3.78, -3.78 , 13.76, 13.79, 0.0]
+GUIDING_WIRE_CURRENTS   : List[float] = [0.0, 13.79, 13.76, -3.78, -3.78, -3.78, 13.76, 13.79, 0.0]
 
 #-------------------------------------------------------------
 # Bias fields
@@ -74,7 +74,7 @@ def setup_wire_layout(
     top_offset             : float = -(PCB_GLASS_HEIGHT + PCB_TOP_OFFSET + PCB_LAYER_TOP_HEIGHT / 2),
     bottom_offset          : float = -(PCB_GLASS_HEIGHT + PCB_TOP_OFFSET + PCB_LAYER_TOP_HEIGHT +
                                        PCB_CORE_HEIGHT + PCB_LAYER_BOTTOM_HEIGHT / 2),
-    pcb_pin_length         : float = PBC_PIN_LENGTH,
+    pcb_pin_length         : float = PCB_PIN_LENGTH,
     # Shifting wire properties
     shifting_wire_length   : float = SHIFTING_WIRE_LENGTH,
     shifting_wire_width    : float = SHIFTING_WIRE_WIDTH,
@@ -136,7 +136,7 @@ def setup_wire_layout(
         wire[1][2] += top_offset
 
     #----------------------------------------------------------
-    # PBC Bottom Layer (Quadrupole wires)
+    # PCB Bottom Layer (Quadrupole wires)
     #----------------------------------------------------------
 
     # Guiding wire length and height
