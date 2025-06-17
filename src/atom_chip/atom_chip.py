@@ -101,12 +101,13 @@ def analyze_all(
     """
     Analyze the trap magnetic field and potential energy at given points in space.
     """
-    logging.info(f"Bias fields: {field.bias_config_to_dict(bias_config)}")
+    logger = logging.getLogger("trap_analysis")
+    logger.info(f"Bias fields: {field.bias_config_to_dict(bias_config)}")
     start_time = time.time()
     field_analysis = analyze_field(atom, wires, currents, bias_config, options)
     potential_analysis = analyze_trap(atom, wires, currents, bias_config, options)
     end_time = time.time()
-    logging.info(f"Analysis completed in {end_time - start_time:.2f} seconds")
+    logger.info(f"Analysis completed in {end_time - start_time:.2f} seconds")
     return AtomChipAnalysis(field=field_analysis, potential=potential_analysis)
 
 

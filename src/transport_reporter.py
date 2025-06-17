@@ -7,7 +7,6 @@ import textwrap
 from typing import List, Tuple
 import jax.numpy as jnp
 import matplotlib.pyplot as plt
-import atom_chip as ac
 import transport_initializer
 
 
@@ -93,12 +92,12 @@ def plot_results(params: attrdict, results: attrdict, results_dir: str = None):
     shifting_wire_x = jnp.array([wire[0][0] for wire in SHIFTING_WIRES[14:21]])  # Collect x positions of shifting wires
 
     # Plotting the trap trajectory, currents, U0, and omega.
-    suptitle = textwrap.fill(", ".join(
-        f"{key}={value}" for key, value in params.items()
-    ), width=80)
+    def suptitle(width: int = None, include_time: bool = False) -> str:
+        title = ", ".join(f"{key}={value}" for key, value in params.items() if include_time or key != "transport_time")
+        return textwrap.fill(title, width=width) if width else title
 
-    fig1, axs1 = plt.subplots(2, 2, figsize=(8, 5))
-    fig1.suptitle(f"Optimization Currents: {suptitle}", fontsize=8, y=0.99)
+    fig1, axs1 = plt.subplots(2, 2, figsize=(7, 5))
+    fig1.suptitle(f"Optimization Currents: {suptitle(80)}", fontsize=8)
     current_log = results.current_log
     plot_wire_currents   (axs1[0, 0], current_log, wire_indices=[0, 1, 2, 3, 4, 5])
     plot_wire_currents   (axs1[0, 1], current_log, wire_indices=[6, 14])
@@ -107,7 +106,7 @@ def plot_results(params: attrdict, results: attrdict, results_dir: str = None):
     fig1.tight_layout()
 
     fig2, axs2 = plt.subplots(2, 4, figsize=(18, 6))
-    fig2.suptitle(f"Optimization Trajectory: {suptitle}", fontsize=8, y=0.99)
+    fig2.suptitle(f"Optimization Trajectory: {suptitle()}", fontsize=8)
     trajectory, target_rs = results.trajectory, results.target_rs
     plot_x_over_time     (axs2[0, 0], trajectory, target_rs, shifting_wire_x)
     plot_r_i_over_time   (axs2[0, 1], trajectory, target_rs, axis_index=1)  # y positions
@@ -119,11 +118,11 @@ def plot_results(params: attrdict, results: attrdict, results_dir: str = None):
     plot_xz_trajectory   (axs2[1, 3], trajectory, target_rs, shifting_wire_x)
     fig2.tight_layout()
 
-    fig3, axs3 = plt.subplots(2, 3, figsize=(10, 5))
-    fig3.suptitle(f"Optimization Geometry: {suptitle}", fontsize=8, y=0.99)
+    fig3, axs3 = plt.subplots(2, 3, figsize=(11, 5))
+    fig3.suptitle(f"Optimization Geometry: {suptitle(150)}", fontsize=8)
     plot_trap_potential  (axs3[0, 0], results.U0s)
     plot_mu_values       (axs3[0, 1], results.mu_vals)
-    plot_adiabaticity    (axs3[0, 2], trajectory, results.omegas, params.transport_time)
+    plot_adiabaticity    (axs3[0, 2], trajectory, results.omegas, results.TF_radii, params.transport_time)
     plot_trap_frequencies(axs3[1, 0], results.omegas)
     plot_trap_radii      (axs3[1, 1], results.BEC_radii, title="BEC Radii")
     plot_trap_radii      (axs3[1, 2], results.TF_radii, title=f"TF Radii ({params.n_atoms} atoms)")
@@ -169,13 +168,15 @@ def save_plot(fig: plt.Figure, title: str, results_dir: str):
 
 
 def plot_x_over_time(ax: plt.Axes, trajectory: jnp.ndarray, trajectory_ref: jnp.ndarray, shifting_wire_x: jnp.ndarray):
-    # Plot x over time.
+    """
+    Plot x over time.
+    """
     x = trajectory[:, 0]
     x_ref = trajectory_ref[:, 0]
     for wire_x in shifting_wire_x:
         ax.axhline(wire_x, linestyle="--", color="gray", linewidth=0.5)
-    ax.plot(x_ref, label="Target x position", color="orange", marker=".", markersize=0.1)
-    ax.plot(x, label="x position", markersize=0.1)
+    ax.plot(x_ref, label="Target x position", color="orange", linewidth=1.0)
+    ax.plot(x, label="x position", linewidth=1.0)
     ax.set_title("Trap x Position Over Time", fontsize=8, pad=0.0)
     ax.set_ylabel("x (mm)", fontsize=8)
     ax.tick_params(axis="both", which="major", labelsize=8)
@@ -185,12 +186,14 @@ def plot_x_over_time(ax: plt.Axes, trajectory: jnp.ndarray, trajectory_ref: jnp.
 
 
 def plot_r_i_over_time(ax: plt.Axes, trajectory: jnp.ndarray, trajectory_ref: jnp.ndarray, axis_index: int):
-    # Plot y over time.
+    """
+    Plot y over time.
+    """
     r_i = trajectory[:, axis_index]
     r_i_ref = trajectory_ref[:, axis_index]
     axis = ["x", "y", "z"][axis_index]
-    ax.plot(r_i, label=f"{axis} positions", markersize=0.1)
-    ax.plot(r_i_ref, label=f"Target {axis} position", color="orange", marker=".", markersize=0.1)
+    ax.plot(r_i_ref, label=f"Target {axis} position", color="orange", linewidth=1.0)
+    ax.plot(r_i, label=f"{axis} positions", linewidth=1.0)
     ax.set_title(f"Trap {axis} Over Time", fontsize=8, pad=0.0)
     ax.set_ylabel(f"{axis} (mm)", fontsize=8)
     ax.tick_params(axis="both", which="major", labelsize=8)
@@ -202,13 +205,15 @@ def plot_r_i_over_time(ax: plt.Axes, trajectory: jnp.ndarray, trajectory_ref: jn
 def plot_xy_trajectory(
     ax: plt.Axes, trajectory: jnp.ndarray, trajectory_ref: jnp.ndarray, shifting_wire_x: jnp.ndarray
 ):
-    # Plot x-y trap trajectory.
+    """
+    Plot x-y trap trajectory.
+    """
     x, y = trajectory[:, 0], trajectory[:, 1]
     x_ref, y_ref = trajectory_ref[:, 0], trajectory_ref[:, 1]
     for wire_x in shifting_wire_x:
         ax.axvline(wire_x, linestyle="--", color="gray", linewidth=0.5)
     ax.plot(x_ref, y_ref, label="Target x-y position", color="orange", linewidth=1.0)
-    ax.plot(x, y, label="x-y position", markersize=0.1)
+    ax.plot(x, y, label="x-y position", linewidth=1.0)
     ax.set_title("Trap Trajectory (x-y)", fontsize=8, pad=0.0)
     ax.set_xlabel("x (mm)", fontsize=8, labelpad=0.0)
     ax.set_ylabel("y (mm)", fontsize=8)
@@ -221,13 +226,15 @@ def plot_xy_trajectory(
 def plot_xz_trajectory(
     ax: plt.Axes, trajectory: jnp.ndarray, trajectory_ref: jnp.ndarray, shifting_wire_x: jnp.ndarray
 ):
-    # Plot x-z trap trajectory.
+    """
+    Plot x-z trap trajectory.
+    """
     x, z = trajectory[:, 0], trajectory[:, 2]
     x_ref, z_ref = trajectory_ref[:, 0], trajectory_ref[:, 2]
     for wire_x in shifting_wire_x:
         ax.axvline(wire_x, linestyle="--", color="gray", linewidth=0.5)
     ax.plot(x_ref, z_ref, label="Target x-z position", color="orange", linewidth=1.0)
-    ax.plot(x, z, label="x-z position", markersize=0.1)
+    ax.plot(x, z, label="x-z position", linewidth=1.0)
     ax.set_title("Trap Trajectory (x-z)", fontsize=8, pad=0.0)
     ax.set_xlabel("x (mm)", fontsize=8, labelpad=0.0)
     ax.set_ylabel("z (mm)", fontsize=8)
@@ -238,11 +245,13 @@ def plot_xz_trajectory(
 
 
 def plot_axial_velocity(ax: plt.Axes, trajectory: jnp.ndarray, axis_index: int = 0):
-    # Plot axial velocity over time.
+    """
+    Plot axial velocity over time.
+    """
     # Calculate the velocity as the difference between consecutive positions
     velocities = jnp.diff(trajectory[:, axis_index])  # dx/dt, dy/dt, dz/dt
     axis = ["x", "y", "z"][axis_index]
-    ax.plot(velocities, label="Axial Velocity", markersize=0.1)
+    ax.plot(velocities, label="Axial Velocity", linewidth=0.1)
     ax.set_title(f"Axial Velocity ($d{axis}/dt$) Over Time", fontsize=8, pad=0.0)
     ax.set_ylabel("Velocity (mm/step)", fontsize=8)
     ax.tick_params(axis="both", which="major", labelsize=8)
@@ -252,9 +261,11 @@ def plot_axial_velocity(ax: plt.Axes, trajectory: jnp.ndarray, axis_index: int =
 
 
 def plot_wire_currents(ax: plt.Axes, current_log: jnp.ndarray, wire_indices: List[int]):
-    # Plot wire currents over time.
+    """
+    Plot wire currents over time.
+    """
     for i in wire_indices:
-        ax.plot(current_log[:, i], label=f"Wire {i}", markersize=0.1)
+        ax.plot(current_log[:, i], label=f"Wire {i}", linewidth=1.0)
     ax.set_title("Wire Currents Over Time", fontsize=8, pad=0.0)
     ax.set_ylabel("Current (A)", fontsize=8)
     ax.tick_params(axis="both", which="major", labelsize=8)
@@ -262,8 +273,10 @@ def plot_wire_currents(ax: plt.Axes, current_log: jnp.ndarray, wire_indices: Lis
 
 
 def plot_trap_potential(ax: plt.Axes, U0_vals: List[float]):
-    # Plot U0 (trap potential energy) over time.
-    ax.plot(U0_vals, label="U0", markersize=0.1)
+    """
+    Plot U0 (trap potential energy) over time.
+    """
+    ax.plot(U0_vals, label="U0", linewidth=1.0)
     ax.set_title("Trap Potential Energy (U0) Over Time", fontsize=8, pad=0.0)
     ax.set_ylabel("U0 (J)", fontsize=8)
     ax.tick_params(axis="both", which="major", labelsize=8, pad=0.3)
@@ -273,9 +286,11 @@ def plot_trap_potential(ax: plt.Axes, U0_vals: List[float]):
 
 
 def plot_trap_frequencies(ax: plt.Axes, omega_vals: jnp.ndarray):
-    # Plot trap frequencies over time.
+    """
+    Plot trap frequencies over time.
+    """
     for i, var in enumerate(["$\\omega_x$", "$\\omega_y$", "$\\omega_z$"]):
-        ax.plot(omega_vals[:, i], label=var, markersize=0.1)
+        ax.plot(omega_vals[:, i], label=var, linewidth=1.0)
     ax.set_title("Trap Frequencies Over Time", fontsize=8, pad=0.0)
     ax.set_ylabel("Frequency (Hz)", fontsize=8)
     ax.tick_params(axis="both", which="major", labelsize=8)
@@ -285,9 +300,11 @@ def plot_trap_frequencies(ax: plt.Axes, omega_vals: jnp.ndarray):
 
 
 def plot_trap_radii(ax: plt.Axes, radii_vals: jnp.ndarray, title: str):
-    # Plot BEC radii over time.
+    """
+    Plot trap radii over time.
+    """
     for i, var in enumerate(["$r_x$", "$r_y$", "$r_z$"]):
-        ax.plot(radii_vals[:, i], label=f"{var} {i + 1}", markersize=0.1)
+        ax.plot(radii_vals[:, i], label=f"{var} {i + 1}", linewidth=1.0)
     ax.set_title(f"{title} Over Time", fontsize=8, pad=0.0)
     ax.set_ylabel("Radius (m)", fontsize=8)
     ax.tick_params(axis="both", which="major", labelsize=8)
@@ -297,8 +314,10 @@ def plot_trap_radii(ax: plt.Axes, radii_vals: jnp.ndarray, title: str):
 
 
 def plot_mu_values(ax: plt.Axes, mu_vals: jnp.ndarray):
-    # Plot chemical potential over time.
-    ax.plot(mu_vals, label="Chemical Potential", markersize=0.1)
+    """
+    Plot chemical potential over time.
+    """
+    ax.plot(mu_vals, label="Chemical Potential", linewidth=1.0)
     ax.set_title("Chemical Potential Over Time", fontsize=8, pad=0.0)
     ax.set_ylabel("Chemical Potential (J)", fontsize=8)
     ax.tick_params(axis="both", which="major", labelsize=8)
@@ -307,15 +326,35 @@ def plot_mu_values(ax: plt.Axes, mu_vals: jnp.ndarray):
     ax.yaxis.get_offset_text().set_position((-0.1, 0.0))  # Adjust offset text position
 
 
-def plot_adiabaticity(ax: plt.Axes, trajectory: jnp.ndarray, omega_vals: jnp.ndarray, dt: float):
-    v_x = jnp.diff(trajectory[:, 0]) / dt  # x velocity
-    omega_x = omega_vals[:-1, 0] * 2 * jnp.pi  # Convert to rad/s
-    atom = transport_initializer.ATOM
-    sigma_x = jnp.sqrt(ac.constants.hbar / (2 * atom.mass * omega_x))  # Position uncertainty
-    eps = jnp.abs(v_x) / (omega_x * sigma_x)  # Adiabaticity parameter
-    ax.plot(eps, lw=0.8, c="tab:purple")
-    ax.set_title("Adiabatic parameter ε(t)", fontsize=8, pad=0.0)
+def plot_adiabaticity(
+    ax: plt.Axes, trajectory: jnp.ndarray, omega_vals: jnp.ndarray, TF_radii: jnp.ndarray, transport_time: float
+):
+    """
+    ε(t) = |v_x| / (ω_x σ_x);  σ_x = TF_radius / sqrt(5)
+           the RMS width (standard deviation) of the TF density profile.
+           where Thomas-Fermi radius is max extent of the BEC in the x direction.
+    Uses centred derivative for v_x.
+    """
+    n_steps = len(trajectory) - 1
+    x = jnp.asarray(trajectory[:, 0]) * 1e-3  # Convert x positions from mm to m
+    ωx = omega_vals[:, 0] * 2 * jnp.pi  # rad/s
+    sigma_x = TF_radii[:, 0] / jnp.sqrt(5.0)  # The RMS width of the TF density profile
+
+    ax.axhline(0.3, linestyle="--", linewidth=0.5, color="grey")  # Adiabaticity threshold line
+    for s in range(-1, 2):
+        duration = transport_time + s
+        if duration <= 0:
+            continue
+        dt = duration / n_steps
+        v_x = jnp.gradient(x, dt)  # m/s
+        eps = jnp.abs(v_x) / (ωx * sigma_x)  # we may remove both ends like [1:-1] since we take the centred derivative
+        ax.plot(eps, linewidth=0.1, label=f"time = {duration:.2f} s")
+    ax.set_title("Adiabatic parameter ε(t) = |v_x| / (ω_x σ_x)", fontsize=8)
     ax.set_ylabel("ε", fontsize=8)
+    ax.tick_params(axis="both", which="major", labelsize=8)
+    ax.legend(fontsize="xx-small")
+    ax.yaxis.get_offset_text().set_fontsize(8)
+    ax.yaxis.get_offset_text().set_position((-0.1, 0.0))  # Adjust offset text position
 
 
 # ----------------------------------------------------------------------------------------------------

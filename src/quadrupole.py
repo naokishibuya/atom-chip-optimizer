@@ -2,7 +2,6 @@
 This script optimizes the current distribution in a quadrupole trap given a set of constraints.
 """
 
-import logging
 import os
 from typing import Tuple
 import matplotlib.pyplot as plt
@@ -11,10 +10,6 @@ import jax
 import jax.numpy as jnp
 import optax
 import atom_chip as ac
-
-
-# Set up logging
-logging.basicConfig(level=logging.INFO)
 
 
 MATERIAL = "copper"

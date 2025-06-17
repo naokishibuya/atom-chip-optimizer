@@ -1,5 +1,4 @@
 import os
-import logging
 import jax.numpy as jnp
 import atom_chip as ac
 
@@ -139,9 +138,6 @@ def main():
         condensed_atoms=1e5,
     )
     # fmt: on
-
-    # Set up logging
-    logging.basicConfig(level=logging.INFO)
 
     # Build the atom chip
     atom_chip = build_atom_chip()

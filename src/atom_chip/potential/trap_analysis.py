@@ -24,11 +24,10 @@ Notes:
 """
 
 import logging
-from dataclasses import dataclass, field
-from typing import Callable
+from dataclasses import dataclass
+from typing import Callable, NamedTuple
 import jax
 import jax.numpy as jnp
-from jax.tree_util import register_dataclass
 from . import constants
 from .atom import Atom, magnetic_moment
 from .minimum import search_minimum, MinimumResult
@@ -36,15 +35,13 @@ from .hessian import hessian_at_minimum, Hessian
 
 
 logging.basicConfig(level=logging.INFO, format="")
-logger = logging.getLogger(__name__)
+logger = logging.getLogger("trap_analysis")
 
 
 # fmt: off
-@register_dataclass
-@dataclass
-class Frequency:
-    frequency: jnp.ndarray = field(default_factory=lambda: jnp.nan)  # [Hz]
-    angular  : jnp.ndarray = field(default_factory=lambda: jnp.nan)  # [rad/s]
+class Frequency(NamedTuple):
+    frequency: jnp.ndarray  # [Hz]
+    angular  : jnp.ndarray  # [rad/s]
 # fmt: on
 
 
@@ -59,15 +56,13 @@ class Frequency:
 #  - Radii ≈ harmonic oscillator lengths
 #  - Chemical potential ~ zero-point energy
 # fmt: off
-@register_dataclass
-@dataclass
-class BECAnalysis:
-    total_atoms: int         = field(default_factory=lambda: 0)        # Total number of atoms in the trap
-    a_ho       : float       = field(default_factory=lambda: jnp.nan)  # H.O. length [m]
-    w_ho       : float       = field(default_factory=lambda: jnp.nan)  # Geometric mean trap frequency (angular) [rad/s]
-    mu_0       : float       = field(default_factory=lambda: jnp.nan)  # Ground level chemical potential limit [J]
-    radii      : jnp.ndarray = field(default_factory=lambda: None)     # Harmonic oscillator length [m]
-    T_c        : float       = field(default_factory=lambda: jnp.nan)  # Critical temperature [K]
+class BECAnalysis(NamedTuple):
+    total_atoms: int         # Total number of atoms in the trap
+    a_ho       : float       # H.O. length [m]
+    w_ho       : float       # Geometric mean trap frequency (angular) [rad/s]
+    mu_0       : float       # Ground level chemical potential limit [J]
+    radii      : jnp.ndarray # Harmonic oscillator length [m]
+    T_c        : float       # Critical temperature [K]
 # fmt: on
 
 
@@ -83,12 +78,10 @@ class BECAnalysis:
 #  - Chemical potential dominated by interaction energy
 #  - Kinetic energy negligible
 # fmt: off
-@register_dataclass
-@dataclass
-class TFAnalysis:
-    condensed_atoms: int         = field(default_factory=lambda: 0)       # Number of condensed atoms in the trap
-    mu             : float       = field(default_factory=lambda: jnp.nan) # Thomas-Fermi chemical potential [J]
-    radii          : jnp.ndarray = field(default_factory=lambda: None)    # Thomas-Fermi radii in each direction [m]
+class TFAnalysis(NamedTuple):
+    condensed_atoms: int          # Number of condensed atoms in the trap
+    mu             : float        # Thomas-Fermi chemical potential [J]
+    radii          : jnp.ndarray  # Thomas-Fermi radii in each direction [m]
 # fmt: on
 
 
@@ -107,24 +100,22 @@ class AnalysisOptions:
 
 
 # fmt: off
-@dataclass
-class FieldAnalysis:
+class FieldAnalysis(NamedTuple):
     minimum: MinimumResult
-    hessian: Hessian   = field(default_factory=lambda: Hessian())
-    trap   : Frequency = field(default_factory=lambda: Frequency())
-    larmor : Frequency = field(default_factory=lambda: Frequency())
+    hessian: Hessian
+    trap   : Frequency
+    larmor : Frequency
 # fmt: on
 
 
 # fmt: off
-@dataclass
-class PotentialAnalysis:
+class PotentialAnalysis(NamedTuple):
     minimum: MinimumResult
-    hessian: Hessian     = field(default_factory=lambda: Hessian())
-    trap   : Frequency   = field(default_factory=lambda: Frequency())
-    larmor : Frequency   = field(default_factory=lambda: Frequency())
-    bec    : BECAnalysis = field(default_factory=lambda: BECAnalysis())
-    tf     : TFAnalysis  = field(default_factory=lambda: TFAnalysis())
+    hessian: Hessian
+    trap   : Frequency
+    larmor : Frequency
+    bec    : BECAnalysis
+    tf     : TFAnalysis
 # fmt: on
 
 
@@ -157,7 +148,7 @@ def analyze_field(
         )
     else:
         logger.info(f"Optimization failed: {minimum.message}")
-        return PotentialAnalysis(minimum)
+        return PotentialAnalysis(minimum, None, None, None, None, None)
 
     # Step 2: Hessian
     hessian = hessian_at_minimum(objective, minimum.position, **options.hessian)
@@ -225,7 +216,7 @@ def analyze_trap(
         )
     else:
         logger.info(f"Optimization failed: {minimum.message}")
-        return PotentialAnalysis(minimum)
+        return PotentialAnalysis(minimum, hessian=None, trap=None, larmor=None, bec=None, tf=None)
 
     # Step 2: Hessian
     hessian = hessian_at_minimum(objective, minimum.position, **options.hessian)
@@ -239,8 +230,9 @@ def analyze_trap(
     logger.info(f"Trap frequencies (Hz)   : {trap.frequency}")
 
     # Step 4: Larmor Frequency
-    _, B_mag, _ = potential_function(minimum.position)
-    larmor = larmor_frequency(atom, B_mag[0])
+    _, B_mag, B = potential_function(minimum.position)
+    B_mag, B = B_mag[0], B[0]  # B_mag is a scalar, B is a vector
+    larmor = larmor_frequency(atom, B_mag)
     logger.info(f"Larmor frequency (MHz)  : {larmor.frequency * 1e-6}")
     logger.info(f"Larmor frequency (rad/s): {larmor.angular}")
 
@@ -285,7 +277,7 @@ def analyze_trap(
 
 
 @jax.jit
-def trap_frequencies(eigenvalues: jnp.ndarray, mass: float):
+def trap_frequencies(eigenvalues: jnp.ndarray, mass: float) -> Frequency:
     """
     Calculates trap frequencies from Hessian eigenvalues.
 

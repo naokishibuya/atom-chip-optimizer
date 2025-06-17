@@ -123,6 +123,118 @@ def make_search_options(initial_guess) -> ac.potential.AnalysisOptions:
     )
 
 
+def optimize_initial_currents(
+    params,
+    *,
+    target_U=7.5e-28,
+    z_min=0.35,
+    lr=1e-2,
+    iters=1000,
+    w_U=1.0,
+    w_x=10.0,
+    w_y=20.0,
+    w_z=1.0,
+) -> Tuple[jnp.ndarray, jnp.ndarray]:
+    """
+    Adjust the static wire currents so that
+      • U0 ≃ target_U,
+      • (x0,y0,z0) ≃ (0,0,≥z_min),
+      • with soft penalties in y and z (x is loose).
+    """
+    atom = transport_initializer.ATOM
+    wire_cfg = setup_wire_config()
+    bias_cfg = ac.field.ZERO_BIAS_CONFIG
+
+    # initial logical currents
+    I_shift = jnp.array(transport_initializer.SHIFTING_WIRE_CURRENTS, dtype=jnp.float64)
+    I_guide = jnp.array(transport_initializer.GUIDING_WIRE_CURRENTS, dtype=jnp.float64)
+    I_vec = jnp.concatenate([I_shift, I_guide])  # shape (N,)
+
+    n_shift = I_shift.shape[0]
+    n_total = I_vec.shape[0]
+    I_limits = jnp.concatenate(
+        [
+            jnp.ones(n_shift) * params.I_max_shifting,
+            jnp.ones(n_total - n_shift) * params.I_max_guiding,
+        ]
+    )
+
+    # --- JAX jitted helpers -----------------------------------------
+    @jax.jit
+    def trap_U(r, I_wires):
+        # r: (3,), I: (N,)
+        wire_currents = distribute_currents_to_wires(I_wires)
+        U, _, _ = ac.atom_chip.trap_potential_energies(jnp.atleast_2d(r), atom, wire_cfg, wire_currents, bias_cfg)
+        return U[0]
+
+    # ∂U/∂I  at fixed r
+    @jax.jit
+    def dU_dI(r, I_wires):
+        return jax.grad(lambda I_wires: trap_U(r, I_wires))(I_wires)
+
+    # ∂²U/∂r²  at fixed I
+    @jax.jit
+    def H_r(r, I_wires):
+        return jax.hessian(lambda r: trap_U(r, I_wires))(r)
+
+    # ∂²U/(∂r ∂I)  at fixed r
+    @jax.jit
+    def g_rI(r, I_wires):
+        return jax.jacobian(lambda I_wires: jax.grad(lambda r: trap_U(r, I_wires))(r))(I_wires)
+
+    # ----------------------------------------------------------------
+
+    # initial trap minimum (uses SciPy under the hood)
+    I_phys = distribute_currents_to_wires(I_vec)
+    r0 = find_trap_minimum(atom, wire_cfg, bias_cfg, np.array(I_phys), np.array([0.0, 0.0, 0.5]))
+
+    for i in range(1, iters + 1):
+        # 1) metrics at (r0, I_vec)
+        U0 = float(trap_U(r0, I_vec))
+
+        # 2) direct gradient ∂U0/∂I
+        gradU = dU_dI(r0, I_vec)  # (N,)
+
+        # 3) implicit dr/dI
+        H = H_r(r0, I_vec)  # (3,3)
+        J = g_rI(r0, I_vec)  # (3,N)
+        drdI = -jnp.linalg.solve(H, J)  # (3,N)
+
+        # 4) position‐penalty gradient
+        x, y, z = r0
+        dx_dI, dy_dI, dz_dI = drdI[0], drdI[1], drdI[2]
+
+        grad_pos = 2 * w_x * x * dx_dI + 2 * w_y * y * dy_dI - 2 * w_z * jnp.maximum(z_min - z, 0.0) * dz_dI  # (N,)
+
+        # 5) assemble total gradient of L
+        rel_err = (U0 - target_U) / target_U
+        grad_U_term = 2 * w_U * rel_err / target_U * gradU
+        grad_total = grad_U_term + grad_pos  # (N,)
+
+        # 6) gradient step + clipping
+        I_vec = I_vec - lr * grad_total
+        I_vec = jnp.clip(I_vec, -I_limits, I_limits)
+
+        # 7) re-find the trap minimum under new currents
+        I_phys = distribute_currents_to_wires(I_vec)
+        r0 = find_trap_minimum(atom, wire_cfg, bias_cfg, np.array(I_phys), np.array(r0))
+
+        if i % 10 == 0:
+            print(
+                f"[{i:3d}] U0={U0:9.3e}  "
+                f"r0={r0[0]:6.2f} {r0[1]:6.2f} {r0[2]:6.2f}  "
+                f"rel_err={rel_err:6.2e}  "
+                f"|gradU|={jnp.linalg.norm(gradU):6.2e}  "
+                f"|gradU_term|={jnp.linalg.norm(grad_U_term):6.2e}  "
+                f"|step|={(lr * jnp.linalg.norm(grad_U_term)):6.2e}"
+            )
+
+    # split back into shifting / guiding
+    I_opt_shift = I_vec[:n_shift]
+    I_opt_guide = I_vec[n_shift:]
+    return I_opt_shift, I_opt_guide
+
+
 # ----------------------------------------------------------------------------------------------------
 # Optimize the transport of the atom chip trap.
 # ----------------------------------------------------------------------------------------------------
@@ -223,7 +335,14 @@ def generate_schedule(
 ) -> Tuple[attrdict, List]:
 # fmt: on
     @jax.jit
+    def r_target(t: int, T: int) -> jnp.ndarray:
+        """ Calculate the target position of the trap at time t """
+        s = t / T  # Normalize time step to [0, 1]
+        return r0_ref + schedule_func(s) * (destination_r - r0_ref)
+
+    @jax.jit
     def trap_U(r: jnp.ndarray, I_wires: jnp.ndarray) -> float:
+        """ Compute the potential energy at position r for given wire currents I_wires """
         wire_currents = distribute_currents_to_wires(I_wires)
         U, _, _ = ac.atom_chip.trap_potential_energies(
             jnp.atleast_2d(r), atom, wire_config, wire_currents, bias_config
@@ -237,26 +356,25 @@ def generate_schedule(
     cross_jac = jax.jacfwd(grad_U_r, argnums=1)  # Cross Jacobian of potential energy w.r.t. wire currents I_wires
     # fmt: on
 
-    # Implicit gradient dr/dI = -H^{-1} @ dgrad/dI
     @jax.jit
-    def compute_dr_dI(r0, I_wires):
+    def calc_dr_dI(r0, I_wires):
+        """ Implicit gradient dr/dI = -H^{-1} @ dgrad_U_r/dI """
         H = hess_U_r(r0, I_wires)
         J = cross_jac(r0, I_wires)
         return -jnp.linalg.solve(H, J)
 
     @jax.jit
-    def r_target(t: int, T: int) -> jnp.ndarray:
-        s = t / T  # Normalize time step to [0, 1]
-        return r0_ref + schedule_func(s) * (destination_r - r0_ref)
-
-    @jax.jit
-    def implicit_gradient(I_wires: jnp.ndarray, r_now: jnp.ndarray, r_next: jnp.ndarray) -> jnp.ndarray:
+    def solve_for_delta_I_from_delta_r(I_wires: jnp.ndarray, r_now: jnp.ndarray, r_next: jnp.ndarray) -> jnp.ndarray:
+        """
+        Solve for the change in wire currents (delta_I) given the current (r_now) and target (r_next) positions.
+        """
         delta_r = r_next - r_now
         # make sure non-negative displacement in x but allow negative in y and z
         delta_r = jnp.array([jnp.maximum(delta_r[0], 0.0), delta_r[1], delta_r[2]])
-        J = compute_dr_dI(r_now, I_wires)
-        alpha = reg * (1 + jnp.linalg.cond(J))
-        delta_I = jnp.linalg.solve(J.T @ J + alpha * jnp.eye(J.shape[1]), J.T @ delta_r)
+        dr_dI = calc_dr_dI(r_now, I_wires)  # shape: (3, 15)  Jacobian of trap position w.r.t. wire currents
+        condition_number = jnp.linalg.cond(dr_dI)  # max singular value / min singular value
+        alpha = reg * (1 + condition_number)  # Regularization term
+        delta_I = jnp.linalg.solve(dr_dI.T @ dr_dI + alpha * jnp.eye(dr_dI.shape[1]), dr_dI.T @ delta_r)
         return delta_I
 
     # fmt: off
@@ -279,7 +397,7 @@ def generate_schedule(
         r_next = r_target(t + 1, T)
 
         # Compute the implicit gradient and update currents
-        delta_I = implicit_gradient(I_wires, r_now, r_next)
+        delta_I = solve_for_delta_I_from_delta_r(I_wires, r_now, r_next)
         I_wires = I_wires + delta_I * mask  # Apply mask to restrict current updates
         I_wires = jnp.clip(I_wires, -I_limits, I_limits)
 
@@ -421,12 +539,13 @@ def distribute_currents_to_wires(I_wires: jnp.ndarray) -> jnp.ndarray:
 def main():
     # fmt: off
     parser = argparse.ArgumentParser(description="Transport Optimizer for Atom Chip")
+    parser.add_argument("--init", action="store_true", help="Optimize initial transport currents")
     parser.add_argument("--T",              type=int,   default=50000,    help="Number of time steps")
     parser.add_argument("--num_shifts",     type=int,   default=6,        help="Number of shifts to apply to the trap")
     parser.add_argument("--reg",            type=float, default=1e-2,     help="Regularization parameter")
     parser.add_argument("--n_atoms",        type=int,   default=int(1e5), help="Number of atoms in the BEC")
-    parser.add_argument("--I_max_shifting", type=float, default=1.0,      help="Max current for shifting wires (A)")
-    parser.add_argument("--I_max_guiding",  type=float, default=14.0,     help="Max current for guiding wires (A)")
+    parser.add_argument("--I_max_shifting", type=float, default=3.5,      help="Max current for shifting wires (A)")
+    parser.add_argument("--I_max_guiding",  type=float, default=70.0,     help="Max current for guiding wires (A)")
     parser.add_argument("--wire_ids",       type=str, nargs='*', default=[0, 1, 2, 3, 4, 5, 6, 14],
                         help="List of wire IDs to optimize (default: all shifting wires and outermost guiding wires)")
     parser.add_argument("--scheduler",      type=str, default="smoothstep",
@@ -436,8 +555,18 @@ def main():
     args = parser.parse_args()
     # fmt: on
 
-    # Run the transport optimization
-    optimize_transport(attrdict(**vars(args)))
+    if args.init:
+        # Initialize the transport optimizer with default parameters
+        I_shifting_wires, I_guiding_wires = optimize_initial_currents(attrdict(**vars(args)))
+        # format the results into string with 2 decimal places
+        I_shifting_wires = np.array2string(I_shifting_wires, precision=2, separator=', ', suppress_small=True)
+        I_guiding_wires = np.array2string(I_guiding_wires, precision=2, separator=', ', suppress_small=True)
+        print(f"Optimized shifting wire currents: {I_shifting_wires}")
+        print(f"Optimized guiding wire currents: {I_guiding_wires}")
+        print("Update the transport_initializer.py file with these values.")
+    else:
+        # Run the transport optimization
+        optimize_transport(attrdict(**vars(args)))
 
 
 if __name__ == "__main__":

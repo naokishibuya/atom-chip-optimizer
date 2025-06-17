@@ -1,11 +1,5 @@
 """
-1-D TDGPE transport — fast JAX scan
-===================================
-Fully-JIT, time-dependent split-step simulation of a BEC in a moving harmonic trap.
-Changes in this version
-• indentation fixed (block after g1d)
-• duplicate `V_ts = ...` removed
-• smooth-step up-sampling retained (UPSAMPLE = 20, TRANSPORT_TIME = 10 s)
+1-D TDGPE transport
 """
 
 import argparse
@@ -19,20 +13,12 @@ from transport_initializer import ATOM as atom
 from transport_reporter import load_results
 
 
-# ————————————————————————————————————————————————
-# Helper functions
-# ————————————————————————————————————————————————
-def normalize(psi, x_um):
-    norm = np.sqrt(np.trapezoid(jnp.abs(psi) ** 2, x_um))
-    return psi / norm if norm > 0 else psi
-
-
 # ----------------------------------------------------------------------------------------------------
 # Harmonic oscillator ground state
 # ----------------------------------------------------------------------------------------------------
 def ho_ground_state(x_um, centre_um, m, omega):
     """1-D harmonic-oscillator ground state on µm grid."""
-    hbar = 1.054_571_817e-34
+    hbar = ac.constants.hbar  # J·s
     x_m = (x_um - centre_um) * 1e-6
     a_ho = jnp.sqrt(hbar / (m * omega))
     psi = jnp.exp(-(x_m**2) / (2 * a_ho**2)) / (jnp.pi**0.25 * jnp.sqrt(a_ho))
@@ -40,10 +26,18 @@ def ho_ground_state(x_um, centre_um, m, omega):
 
 
 # ----------------------------------------------------------------------------------------------------
+# Normalize wavefunction
+# ----------------------------------------------------------------------------------------------------
+def normalize(psi, x_um):
+    norm = np.sqrt(np.trapezoid(jnp.abs(psi) ** 2, x_um))
+    return psi / norm if norm > 0 else psi
+
+
+# ----------------------------------------------------------------------------------------------------
 # Harmonic oscillator energy
 # ----------------------------------------------------------------------------------------------------
 def ho_energy(psi, x_um, m, omega):
-    hbar = 1.054_571_817e-34
+    hbar = ac.constants.hbar  # J·s
     dx_m = (x_um[1] - x_um[0]) * 1e-6
     x_m = x_um * 1e-6
     grad = (jnp.roll(psi, -1) - jnp.roll(psi, 1)) / (2 * dx_m)
@@ -58,7 +52,7 @@ def ho_energy(psi, x_um, m, omega):
 @jax.jit
 def split_step_td_scan(psi0_cplx, V_ts, g1d, dt, dx_m, m):
     """Time-dependent split-step.  V_ts shape = (T, N)."""
-    hbar = 1.054_571_817e-34
+    hbar = ac.constants.hbar  # J·s
     k = 2 * jnp.pi * jnp.fft.fftfreq(V_ts.shape[1], d=dx_m)
 
     def body(psi, Vt):
@@ -137,46 +131,49 @@ def main():
     E_exc = ho_energy(psiT, x, m_rb, wT) - 0.5 * hbar * wT
     print(f"Fidelity F = {fidelity:.6e}\nExcitation ΔE = {E_exc:.3e} J")
 
-    # ---------- plotting helper ------------------------------------------
-    # where does ψT live?  (threshold = 1e-3 of max density)
-    th = 1e-3 * jnp.max(jnp.abs(psiT) ** 2)
-    support_mask = jnp.abs(psiT) ** 2 > th
-    x_min = float(x[support_mask][0])
-    x_max = float(x[support_mask][-1])
+    # plot results
+    # plot_density(x, psi0, phi0, psiT, zoom=False)  # full view
+    # plot_density(x, psi0, phi0, psiT, zoom=True)  # zoomed on final state
+    plot_1d_tdgpe(x, phi0, psiT, args)
 
-    def plot_density(zoom=False):
-        plt.figure(figsize=(8, 5))
-        if not zoom:
-            plt.plot(x, jnp.abs(psi0) ** 2, label=r"$|\psi_0|^2$", alpha=0.4)
-        plt.plot(x, jnp.abs(phi0) ** 2, "--", label=r"$|\phi_0|^2$ target")
-        plt.plot(x, jnp.abs(psiT) ** 2, label=r"$|\psi_T|^2$")
-        plt.xlabel("x (µm)")
-        plt.ylabel("Probability density")
-        plt.title("TDGPE transport — fully-JAX scan (smooth-step path)")
-        if zoom:
-            pad = 2.0  # µm margin
-            plt.xlim(x_min - pad, x_max + pad)
-            plt.title("TDGPE transport (zoom on final trap)")
-        plt.legend()
-        plt.grid(True)
-        plt.tight_layout()
-        tag = "zoom" if zoom else "full"
-        plt.savefig(f"tdgpe_probabilities_{tag}.png", dpi=150)
-        plt.show()
 
-    plot_density(zoom=False)  # full view
-    plot_density(zoom=True)  # zoomed on final state
+def plot_density(x, psi0, phi0, psiT, zoom=False):
+    plt.figure(figsize=(8, 5))
+    if not zoom:
+        plt.plot(x, jnp.abs(psi0) ** 2, label=r"$|\psi_0|^2$", alpha=0.4)
+    plt.plot(x, jnp.abs(phi0) ** 2, "--", label=r"$|\phi_0|^2$ target")
+    plt.plot(x, jnp.abs(psiT) ** 2, label=r"$|\psi_T|^2$")
+    plt.xlabel("x (µm)")
+    plt.ylabel("Probability density")
+    plt.title("TDGPE transport — fully-JAX scan (smooth-step path)")
+    if zoom:
+        # where does ψT live?  (threshold = 1e-3 of max density)
+        th = 1e-3 * jnp.max(jnp.abs(psiT) ** 2)
+        support_mask = jnp.abs(psiT) ** 2 > th
+        x_min = float(x[support_mask][0])
+        x_max = float(x[support_mask][-1])
+        pad = 2.0  # µm margin
+        plt.xlim(x_min - pad, x_max + pad)
+        plt.title("TDGPE transport (zoom on final trap)")
+    plt.legend()
+    plt.grid(True)
+    plt.tight_layout()
+    tag = "zoom" if zoom else "full"
+    plt.savefig(f"tdgpe_probabilities_{tag}.png", dpi=150)
+    plt.show()
 
+
+def plot_1d_tdgpe(x, phi0, psiT, args):
     # find the first and last non-zero points
     first_nonzero = np.argmax(jnp.abs(psiT) > 0.01)
     last_nonzero = len(psiT) - np.argmax(jnp.abs(psiT[::-1]) > 0) - 1
-    print(f"First non-zero at x = {x[first_nonzero]:.2f} µm")
-    print(f"Last non-zero at x = {x[last_nonzero]:.2f} µm")
-    print(f"Range of non-zero values: {x[first_nonzero]:.2f} µm to {x[last_nonzero]:.2f} µm")
-
     x = x[first_nonzero : last_nonzero + 1]
     psiT = psiT[first_nonzero : last_nonzero + 1]
     phi0 = phi0[first_nonzero : last_nonzero + 1]
+
+    print(f"First non-zero at x = {x[first_nonzero]:.2f} µm")
+    print(f"Last non-zero at x = {x[last_nonzero]:.2f} µm")
+    print(f"Range of non-zero values: {x[first_nonzero]:.2f} µm to {x[last_nonzero]:.2f} µm")
 
     # plot
     plt.figure(figsize=(8, 5))
@@ -185,7 +182,7 @@ def main():
     plt.plot(x, jnp.abs(psiT) ** 2, label="|ψ_T|²", alpha=0.7)
     plt.xlabel("x (µm)")
     plt.ylabel("Probability density")
-    plt.title("TDGPE transport — fully-JAX scan (smooth-step path)")
+    plt.title("1D TD-GPE")
     plt.legend()
     plt.grid(True)
     plt.tight_layout()

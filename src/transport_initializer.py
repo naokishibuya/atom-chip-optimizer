@@ -26,26 +26,16 @@ PCB_TOP_OFFSET          : float = 0.0   # PCB top layer vertical offset from ref
 #-------------------------------------------------------------
 SHIFTING_WIRE_LENGTH    : float = 16.0  # Shifting wire length
 SHIFTING_WIRE_WIDTH     : float = 0.3   # Shifting wire width
-SHIFTING_WIRE_CURRENTS  : List[float] = [0.53, 0.89, -0.97, 0.89, 0.53, 0]  # Shifting wire current (A)
+# Shifting wire currents (A) for the PCB: T6, T5, T4, T3, T2, T1
+SHIFTING_WIRE_CURRENTS  : List[float] = [ 0.6,  1.05, -0.9 ,  1.05,  0.6,  0.  ]
 
 #-------------------------------------------------------------
 # Guiding wires for Quadrupole fields
 #-------------------------------------------------------------
 GUIDING_WIRE_LENGTH     : float = 62.0  # Guiding wire length
 PBC_PIN_LENGTH          : float = 50.0  # PCB pin length (leg length)
-GUIDING_WIRE_CURRENT_0  : float = -3.7  # Central guiding wire current (A)
-GUIDING_WIRE_CURRENT_1  : float = 13.8  # Outer guiding wire current (A)
-GUIDING_WIRE_CURRENTS   : List[float] = [
-                         0, # PCB Wire Q4
-    GUIDING_WIRE_CURRENT_1, # PCB Wire Q3
-    GUIDING_WIRE_CURRENT_1, # PCB Wire Q2
-    GUIDING_WIRE_CURRENT_0, # PCB Wire Q1
-    GUIDING_WIRE_CURRENT_0, # PCB Wire Q0
-    GUIDING_WIRE_CURRENT_0, # PCB Wire Q1'
-    GUIDING_WIRE_CURRENT_1, # PCB Wire Q2'
-    GUIDING_WIRE_CURRENT_1, # PCB Wire Q3'
-                         0, # PCB Wire Q4'
-]
+# # Guiding wire currents (A) for the PCB: Q4, Q3, Q2, Q1, Q0, Q1', Q2', Q3', Q4'
+GUIDING_WIRE_CURRENTS   : List[float] = [0.0, 13.79, 13.76, -3.78, -3.78, -3.78 , 13.76, 13.79, 0.0]
 
 #-------------------------------------------------------------
 # Bias fields
@@ -61,8 +51,8 @@ BIAS_Y_COIL_CURRENT : float = 0.0
 BIAS_Z_COIL_CURRENT : float = 0.0
 
 # Stray fields (G)
-BIAS_X_STRAY_FIELD  : float = 1.0
-BIAS_Y_STRAY_FIELD  : float = 1.0
+BIAS_X_STRAY_FIELD  : float = 0.0
+BIAS_Y_STRAY_FIELD  : float = 0.0
 BIAS_Z_STRAY_FIELD  : float = 0.0
 
 # Bias field properties
