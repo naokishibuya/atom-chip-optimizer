@@ -6,6 +6,7 @@ import numpy as np  # formatting arrays only
 from scipy.optimize import minimize
 import atom_chip as ac
 import transport_initializer
+import transport_scheduler
 from transport_reporter import attrdict, report_results
 
 
@@ -250,19 +251,6 @@ def optimize_transport(params: attrdict):
     mask = jnp.zeros((15,)).at[wire_ids].set(1.0)
     print(f"Transport optimization settings: {params}, mask={mask}")
 
-    # 1st and 2nd derivatives are 0 at s = 0 and s = 1
-    def smoothstep_quintic(s: float) -> jnp.ndarray:
-        return 10 * s**3 - 15 * s**4 + 6 * s**5  # C² at both ends
-
-    # Cosine schedule (range [0, 1] over finite time steps t over duration T)
-    def cosine_schedule(s: float) -> jnp.ndarray:
-        return 0.5 * (1 - jnp.cos(jnp.pi * s))
-
-    schedule_func = {
-        "smoothstep": smoothstep_quintic,
-        "cosine": cosine_schedule,
-    }[params.scheduler]
-
     # 2. Transport initial setup
     wire_config = setup_wire_config()
     bias_config = transport_initializer.setup_bias_config()
@@ -276,6 +264,7 @@ def optimize_transport(params: attrdict):
             jnp.ones_like(I_guiding_wires) * params.I_max_guiding,  # Guiding wires limits
         ]
     )  # shape: (15,)
+    schedule_func = transport_scheduler.SCHEDULER_FUNCS[params.scheduler]
 
     # 3. Reference values for the trap
     atom_chip = transport_initializer.build_atom_chip()
@@ -374,8 +363,6 @@ def generate_schedule(
         Solve for the change in wire currents (delta_I) given the current (r_now) and target (r_next) positions.
         """
         delta_r = r_next - r_now
-        # make sure non-negative displacement in x but allow negative in y and z
-        delta_r = jnp.array([jnp.maximum(delta_r[0], 0.0), delta_r[1], delta_r[2]])
         dr_dI = calc_dr_dI(r_now, I_wires)  # shape: (3, 15)  Jacobian of trap position w.r.t. wire currents
         condition_number = jnp.linalg.cond(dr_dI)  # max singular value / min singular value
         alpha = reg * (1 + condition_number)  # Regularization term
@@ -401,10 +388,12 @@ def generate_schedule(
         r_now = trajectory[-1]
         r_next = r_target(t + 1, T)
 
-        # Compute the implicit gradient and update currents
-        delta_I = solve_for_delta_I_from_delta_r(I_wires, r_now, r_next)
-        I_wires = I_wires + delta_I * mask  # Apply mask to restrict current updates
-        I_wires = jnp.clip(I_wires, -I_limits, I_limits)
+        # make sure we only move positively in x direction
+        if r_next[0] - r_now[0] > 1e-6:
+            # Compute the implicit gradient and update currents
+            delta_I = solve_for_delta_I_from_delta_r(I_wires, r_now, r_next)
+            I_wires = I_wires + delta_I * mask  # Apply mask to restrict current updates
+            I_wires = jnp.clip(I_wires, -I_limits, I_limits)
 
         # Find the minimum trap position and evaluate the trap
         wire_currents = distribute_currents_to_wires(I_wires)
@@ -545,16 +534,16 @@ def main():
     # fmt: off
     parser = argparse.ArgumentParser(description="Transport Optimizer for Atom Chip")
     parser.add_argument("--init", action="store_true", help="Optimize initial transport currents")
-    parser.add_argument("--T",              type=int,   default=50000,    help="Number of time steps")
+    parser.add_argument("--T",              type=int,   default=2500,     help="Number of time steps")
     parser.add_argument("--num_shifts",     type=int,   default=6,        help="Number of shifts to apply to the trap")
     parser.add_argument("--reg",            type=float, default=1e-2,     help="Regularization parameter")
     parser.add_argument("--n_atoms",        type=int,   default=int(1e5), help="Number of atoms in the BEC")
     parser.add_argument("--I_max_shifting", type=float, default=3.5,      help="Max current for shifting wires (A)")
     parser.add_argument("--I_max_guiding",  type=float, default=70.0,     help="Max current for guiding wires (A)")
-    parser.add_argument("--wire_ids",       type=str, nargs='*', default=[0, 1, 2, 3, 4, 5, 6, 14],
+    parser.add_argument("--wire_ids",       type=str, nargs='*', default=[0, 1, 2, 3, 4, 5],
                         help="List of wire IDs to optimize (default: all shifting wires and outermost guiding wires)")
     parser.add_argument("--scheduler",      type=str, default="smoothstep",
-                        choices=["smoothstep", "cosine"],
+                        choices=["linear", "smoothstep", "cosine", "trapezoid"],
                         help="Scheduler function to normalize time")
     parser.add_argument("--transport_time", type=float, default=3.0, help="Transport time in seconds")
     args = parser.parse_args()
