@@ -1,0 +1,156 @@
+from typing import List, Tuple, Union
+from dataclasses import dataclass
+import jax
+import jax.numpy as jnp
+
+
+jax.config.update("jax_enable_x64", True)
+
+
+# Define PositionType for clarity
+PositionType = Tuple[float, float, float]
+
+
+@dataclass(frozen=True)
+class RectangularSegment:
+    start: PositionType
+    end: PositionType
+    width: float
+    height: float
+
+    # make it zippable
+    def __iter__(self):
+        return iter((self.start, self.end, self.width, self.height))
+
+
+# Define a type alias for flexibility in input formats
+RectangularSegmentType = Union[
+    RectangularSegment,
+    Tuple[PositionType, PositionType, float, float],
+]
+
+
+# fmt: off
+@dataclass(frozen=True)
+class RectangularConductor:
+    """
+    A wire segment in 3D space defined by a rectangular cross-section.
+
+    Attributes:
+        material (str): The material of the conductor ("copper", "gold")
+        current (float): The current flowing through the conductor in Amperes.
+        starts (jnp.ndarray): Starting points of the segments, shape (N, 3).
+        ends (jnp.ndarray): Ending points of the segments, shape (N, 3).
+        widths (jnp.ndarray): Widths of the segments, shape (N,).
+        heights (jnp.ndarray): Heights of the segments, shape (N,).
+    """
+
+    material: str
+    current : float
+    starts  : jnp.ndarray  # shape (N, 3)
+    ends    : jnp.ndarray  # shape (N, 3)
+    widths  : jnp.ndarray  # shape (N,)
+    heights : jnp.ndarray  # shape (N,)
+
+    @property
+    def currents(self) -> jnp.ndarray:
+        return jnp.full(self.starts.shape[0], self.current, dtype=jnp.float64)
+
+    def get_vertices(self) -> jnp.ndarray:
+        """
+        Calculate the vertices of the rectangular conductor segments.
+
+        Returns:
+            List[Point3D]: List of vertices of the rectangular segments.
+        """
+        return _get_vertices(
+            self.starts,
+            self.ends,
+            self.widths,
+            self.heights,
+        )
+
+    @staticmethod
+    def create(material: str, current: float, segments: List[RectangularSegmentType]) -> "RectangularConductor":
+        segs = [s if isinstance(s, RectangularSegment) else RectangularSegment(*s) for s in segments]
+        starts, ends, widths, heights = zip(*segs)
+        return RectangularConductor(
+            material= material,
+            current = current,
+            starts  = jnp.array(starts, dtype=jnp.float64),
+            ends    = jnp.array(ends, dtype=jnp.float64),
+            widths  = jnp.array(widths, dtype=jnp.float64),
+            heights = jnp.array(heights, dtype=jnp.float64),
+        )
+# fmt: on
+
+
+# fmt: off
+def _get_vertices(
+    starts : jnp.ndarray,
+    ends   : jnp.ndarray,
+    widths : jnp.ndarray,
+    heights: jnp.ndarray,
+) -> jnp.ndarray:
+# fmt: on
+    vectors = ends - starts
+    lengths = jnp.linalg.norm(vectors, axis=1)
+
+    # local coordinates
+    # fmt: off
+    offsets = jnp.array([
+        [-1, -1, -1],
+        [+1, -1, -1],
+        [+1, +1, -1],
+        [-1, +1, -1],
+        [-1, -1, +1],
+        [+1, -1, +1],
+        [+1, +1, +1],
+        [-1, +1, +1],
+    ])[jnp.newaxis, ...] # (1, 8, 3)
+    
+    halves = jnp.array([
+        lengths / 2, 
+        widths  / 2, 
+        heights / 2]).T[:, jnp.newaxis, :] # (M, 1, 3)
+    # fmt: on
+
+    vertices = offsets * halves  # (1, 8, 3) * (M, 1, 3) = (M, 8, 3)
+
+    # rotate vertices
+    alpha = jnp.arctan2(vectors[:, 1], vectors[:, 0])
+    beta = jnp.arcsin(vectors[:, 2] / lengths)
+    cos_a, sin_a = jnp.cos(alpha), jnp.sin(alpha)
+    cos_b, sin_b = jnp.cos(beta), jnp.sin(beta)
+    zeros = jnp.zeros_like(alpha)
+    ones = jnp.ones_like(alpha)
+
+    # Construct CW y-rotation matrix (3, 3, N)
+    # fmt: off
+    rot_y = jnp.array(
+        [
+            [ cos_b, zeros, sin_b],
+            [ zeros, ones , zeros],
+            [-sin_b, zeros, cos_b],
+        ]
+    )
+    # fmt: on
+
+    # Construct CW z-rotation matrix (3, 3, N)
+    # fmt: off
+    rot_z = jnp.array(
+        [
+            [ cos_a,  sin_a, zeros],
+            [-sin_a,  cos_a, zeros],
+            [ zeros,  zeros, ones],
+        ]
+    )
+    # fmt: on
+    rot = rot_z.T @ rot_y.T  # (N, 3, 3)
+    vertices = jnp.einsum("nij,nvj->nvi", rot, vertices)  # (M, 8, 3)
+
+    # translate vertices
+    centers = (starts + ends) / 2
+    vertices += centers[:, jnp.newaxis, :]  # (M, 8, 3) + (M, 1, 3) = (M, 8, 3)
+
+    return vertices

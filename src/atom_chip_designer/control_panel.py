@@ -1,0 +1,247 @@
+"""
+This script adds a wire component in Blender.
+"""
+
+# Note: bpy and mathutils are Blender's built-in modules (no need to install them).
+
+import requests
+import bpy
+from bpy.types import Operator, Panel
+from bpy.props import BoolProperty, FloatProperty, EnumProperty
+from mathutils import Vector
+from .export_json import export_atom_chip_layout
+from .properties import MATERIAL_ENUM_ITEMS, DEFAULT_MATERIAL, add_rectangular_conductor
+from .duplicate_handler import ComponentTracker
+
+
+# fmt: off
+DEFAULT_CURRENT = 1.0
+DEFAULT_LENGTH = 0.01  # 10 mm
+DEFAULT_WIDTH  = 0.001  # 1 mm
+DEFAULT_HEIGHT = 0.001  # 1 mm
+STEP = 0.001  # 1 mm
+# fmt: on
+
+
+class AtomChipToolsPanel(Panel):
+    bl_label = "Atom Chip Tools"
+    bl_idname = "OBJECT_PT_atom_chip_tools"
+    bl_space_type = "VIEW_3D"
+    bl_region_type = "UI"
+    bl_category = "AtomChip"
+
+    def draw(self, context):
+        layout = self.layout
+        scene = context.scene
+
+        box = layout.box()
+        box.label(text="Wires", icon="OUTLINER_OB_MESH")
+        box.operator("object.add_atom_chip_wire", icon="MESH_CUBE")
+        box.prop(scene, "show_atom_chip_markers")  # toggle visibility of markers
+
+        box = layout.box()
+        box.label(text="Bias Fields", icon="FORCE_MAGNETIC")
+
+        # Coil Factors row
+        row = box.row()
+        row.label(text="Coil Factors [G/A]")
+        row = box.row()
+        row.label(text="X")
+        row.label(text="Y")
+        row.label(text="Z")
+        row = box.row()
+        row.prop(scene, "bias_coil_factors_x", text="")
+        row.prop(scene, "bias_coil_factors_y", text="")
+        row.prop(scene, "bias_coil_factors_z", text="")
+
+        # Currents row
+        row = box.row()
+        row.label(text="Currents [A]")
+        row = box.row()
+        row.label(text="X")
+        row.label(text="Y")
+        row.label(text="Z")
+        row = box.row()
+        row.prop(scene, "bias_currents_x", text="")
+        row.prop(scene, "bias_currents_y", text="")
+        row.prop(scene, "bias_currents_z", text="")
+
+        # Stray Fields row
+        row = box.row()
+        row.label(text="Stray Fields [G]")
+        row = box.row()
+        row.label(text="X")
+        row.label(text="Y")
+        row.label(text="Z")
+        row = box.row()
+        row.prop(scene, "bias_stray_fields_x", text="")
+        row.prop(scene, "bias_stray_fields_y", text="")
+        row.prop(scene, "bias_stray_fields_z", text="")
+
+        row = box.row()
+        row.operator("atom_chip.run_simulation", icon="PLAY")
+
+
+class AtomChipWireAdder(Operator):
+    """Add a new atom chip wire component"""
+
+    bl_idname = "object.add_atom_chip_wire"
+    bl_label = "Add Wire"
+    bl_options = {"REGISTER", "UNDO"}
+
+    # === Properties to appear in the pop-up dialog ===
+    # fmt: off
+    link_id : BoolProperty(name="Link to Selected Wire", default=False) # type: ignore[reportInvalidTypeForm]
+    material: EnumProperty (name="Material", items=MATERIAL_ENUM_ITEMS) # type: ignore[reportInvalidTypeForm]
+    current : FloatProperty(name="Current [A]")                         # type: ignore[reportInvalidTypeForm]
+    center_x: FloatProperty(name="Center X", unit='LENGTH', step=STEP)  # type: ignore[reportInvalidTypeForm]
+    center_y: FloatProperty(name="Y"       , unit='LENGTH', step=STEP)  # type: ignore[reportInvalidTypeForm]
+    center_z: FloatProperty(name="Z"       , unit='LENGTH', step=STEP)  # type: ignore[reportInvalidTypeForm]
+    length  : FloatProperty(name="Length"  , unit='LENGTH', step=STEP)  # type: ignore[reportInvalidTypeForm]
+    width   : FloatProperty(name="Width"   , unit='LENGTH', step=STEP)  # type: ignore[reportInvalidTypeForm]
+    height  : FloatProperty(name="Height"  , unit='LENGTH', step=STEP)  # type: ignore[reportInvalidTypeForm]
+    # fmt: on
+
+    def execute(self, context):
+        try:
+            ComponentTracker.pause()  # Pause component ID tracking
+
+            selected = context.active_object
+            has_selected = selected and selected.get("component_id") is not None
+            if self.link_id and has_selected:
+                new_component_id = selected["component_id"]
+                ids = [
+                    obj.get("segment_id", -1) for obj in bpy.data.objects if obj.get("component_id") == new_component_id
+                ]
+                new_segment_id = max(ids + [-1]) + 1
+            else:
+                ids = [obj.get("component_id", -1) for obj in bpy.data.objects]
+                new_component_id = max(ids + [-1]) + 1
+                new_segment_id = 0
+
+            direction = selected.matrix_world.to_3x3() @ Vector((1, 0, 0)) if has_selected else Vector((1, 0, 0))
+
+            # add a new wire object
+            center = Vector((self.center_x, self.center_y, self.center_z))
+            scale = Vector((self.length, self.width, self.height))
+            new_wire = add_rectangular_conductor(
+                new_component_id,
+                new_segment_id,
+                self.material,
+                self.current,
+                center,
+                scale,
+                direction,
+            )
+            bpy.ops.object.select_all(action="DESELECT")
+            new_wire.select_set(True)
+            bpy.context.view_layer.objects.active = new_wire
+            bpy.ops.wm.tool_set_by_id(name="builtin.move")
+        except Exception as e:
+            self.report({"ERROR"}, f"Failed to add wire: {str(e)}")
+            return {"CANCELLED"}
+        finally:
+            ComponentTracker.resume()  # Update the component ID tracker
+
+        return {"FINISHED"}
+
+    def invoke(self, context, event):
+        selected = context.active_object
+        if selected and selected.get("component_id") is not None:
+            # Get the existing wire location
+            self.center_x = selected.location.x
+            self.center_y = selected.location.y
+            self.center_z = selected.location.z
+
+            # Get the existing wire geometry
+            self.length = selected.scale.x
+            self.width = selected.scale.y
+            self.height = selected.scale.z
+
+            # Get the existing wire material and current
+            self.material = getattr(selected, "material")  # as string
+            self.current = getattr(selected, "current")  # as float
+        else:
+            # Default wire location
+            self.center_x = 0.0
+            self.center_y = 0.0
+            self.center_z = 0.0
+
+            # Default wire parameters
+            self.length = DEFAULT_LENGTH
+            self.width = DEFAULT_WIDTH
+            self.height = DEFAULT_HEIGHT
+
+            # Default wire material and current
+            self.material = DEFAULT_MATERIAL
+            self.current = DEFAULT_CURRENT
+
+        return context.window_manager.invoke_props_dialog(self)
+
+
+class RunSimulationOperator(bpy.types.Operator):
+    bl_idname = "atom_chip.run_simulation"
+    bl_label = "Run Simulation"
+    bl_description = "Send current layout to simulation server"
+
+    def execute(self, context):
+        # Collect layout data
+        layout = export_atom_chip_layout()
+
+        # Send to simulation server
+        try:
+            response = requests.post("http://127.0.0.1:8000/simulate", json=layout, timeout=3)
+            if response.ok:
+                self.report({"INFO"}, "Simulation request sent!")
+            else:
+                self.report({"ERROR"}, f"Simulation failed: {response.text}")
+        except requests.exceptions.Timeout:
+            self.report({"ERROR"}, "Simulation server timed out.")
+        except Exception as e:
+            self.report({"ERROR"}, f"Request failed: {str(e)}")
+
+        return {"FINISHED"}
+
+
+# === Registration Management ===
+
+classes = [AtomChipWireAdder, AtomChipToolsPanel, RunSimulationOperator]
+
+
+def register():
+    register_bias_field_props()
+    for cls in classes:
+        bpy.utils.register_class(cls)
+
+
+def unregister():
+    for cls in reversed(classes):
+        bpy.utils.unregister_class(cls)
+    unregister_bias_field_props()
+
+
+# Add properties to the Scene type
+def register_bias_field_props():
+    bpy.types.Scene.bias_coil_factors_x = bpy.props.FloatProperty(name="Coil X", default=0.0)
+    bpy.types.Scene.bias_coil_factors_y = bpy.props.FloatProperty(name="Coil Y", default=0.0)
+    bpy.types.Scene.bias_coil_factors_z = bpy.props.FloatProperty(name="Coil Z", default=0.0)
+
+    bpy.types.Scene.bias_currents_x = bpy.props.FloatProperty(name="Current X", default=0.0)
+    bpy.types.Scene.bias_currents_y = bpy.props.FloatProperty(name="Current Y", default=0.0)
+    bpy.types.Scene.bias_currents_z = bpy.props.FloatProperty(name="Current Z", default=0.0)
+
+    bpy.types.Scene.bias_stray_fields_x = bpy.props.FloatProperty(name="Stray X", default=0.0)
+    bpy.types.Scene.bias_stray_fields_y = bpy.props.FloatProperty(name="Stray Y", default=0.0)
+    bpy.types.Scene.bias_stray_fields_z = bpy.props.FloatProperty(name="Stray Z", default=0.0)
+
+
+def unregister_bias_field_props():
+    del bpy.types.Scene.bias_coil_factors_x
+    del bpy.types.Scene.bias_coil_factors_y
+    del bpy.types.Scene.bias_coil_factors_z
+    del bpy.types.Scene.bias_currents_x
+    del bpy.types.Scene.bias_currents_y
+    del bpy.types.Scene.bias_currents_z
+    del bpy.types.Scene.bias_stray_fields_x
+    del bpy.types.Scene.bias_stray_fields_y
+    del bpy.types.Scene.bias_stray_fields_z

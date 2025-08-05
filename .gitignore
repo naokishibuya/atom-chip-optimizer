@@ -1,3 +1,11 @@
+# Don't want to track these files in git
+*.zip
+*.png
+results/
+
+# macOS system files
+.DS_Store
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
