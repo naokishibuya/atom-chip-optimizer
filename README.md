@@ -1,5 +1,7 @@
 # Atom Chip Optimizer
 
+Credit: This project is inspired by the work of  the University of Sussex's BEC lab's MATLAB scripts.
+
 ## Installation
 
 ### 1. Clone the repository:
