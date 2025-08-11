@@ -69,7 +69,7 @@ Harmonic Oscillator Radii    [μm] : [     1.022     0.5816     0.5665]
 Critical Temperature         [nK] : 503.2301
 
 Thomas-Fermi              [atoms] : 100,000
-Chemical Potenential μ        [J] : 3.3182e-30
+Chemical Potential μ          [J] : 3.3182e-30
 Harmonic Oscillator Radii    [μm] : [     9.689      3.139      2.978]
 ```
 

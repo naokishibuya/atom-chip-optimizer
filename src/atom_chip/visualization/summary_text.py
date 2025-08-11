@@ -121,7 +121,7 @@ Harmonic Oscillator Radii    [μm] : {format_array(tmin_found, potential.bec.rad
 Critical Temperature         [nK] : {format_value(tmin_found, potential.bec.T_c, unit=1e9)}
 
 Thomas-Fermi              [atoms] : {format_count(tmin_found, potential.tf.condensed_atoms)}
-Chemical Potenential μ        [J] : {format_value(tmin_found, potential.tf.mu)}
+Chemical Potential μ          [J] : {format_value(tmin_found, potential.tf.mu)}
 Harmonic Oscillator Radii    [μm] : {format_array(tmin_found, potential.tf.radii, unit=1e6)}
 """
 
