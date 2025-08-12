@@ -135,6 +135,52 @@ The framework also evaluates the speed vs adiabaticity trade-off, allowing users
    pre-commit install   # Install pre-commit hooks
    ```
 
+## Demonstration
+
+### Copper Z Trap
+
+A demonstration of the framework is provided in the `src` directory. It includes a sample copper Z wire configuration and a script to run the optimization to find the potential minimum.
+
+```bash
+python src/copper_z.py
+```
+
+### Quadrupole Field
+
+To demonstrate the quadrupole field, you can run:
+
+```bash
+python src/quadrupole_field.py
+```
+
+### BEC Transport Simulation
+
+To show the initial transport simulation, run:
+
+```bash
+python src/transport_initializer.py
+```
+
+To run the optimization for the transport simulation, execute:
+
+```bash
+python src/transport_optimizer.py
+```
+
+This will create a folder under `results/[yyyymmdd_...]` with the optimized current schedules and other results.
+
+To visualize the results that were generated, you can run:
+
+```bash
+python src/transport_reporter.py --results_dir results/[your_results_folder]
+```
+
+To visualize different scheduler curves, you can run:
+
+```bash
+python src/transport_scheduler.py
+```
+
 ## Credit
 
 This project is inspired by the work of the University of Sussex's BEC lab's MATLAB scripts.

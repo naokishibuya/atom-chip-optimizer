@@ -432,8 +432,8 @@ def plot_adiabaticity(
         v_x = jnp.gradient(x, dt)  # m/s
         eps = jnp.abs(v_x) / (ωx * sigma_x)  # we may remove both ends like [1:-1] since we take the centred derivative
         ax.plot(steps, eps, linewidth=1.0, label=f"time = {duration:.2f} s")
-    ax.set_title("Adiabatic parameter ε(t) = |v_x| / (ω_x σ_x)", fontsize=8)
-    ax.set_ylabel("ε", fontsize=8)
+    ax.set_title(r"Adiabatic parameter $\epsilon$(t) = |$v_x$| / ($\omega_x$ $\sigma_x$)", fontsize=8)
+    ax.set_ylabel(r"$\epsilon$", fontsize=8)
     ax.tick_params(axis="both", which="major", labelsize=8)
     ax.legend(fontsize="xx-small")
     ax.yaxis.get_offset_text().set_fontsize(8)
@@ -447,6 +447,7 @@ def show_statistics(params: attrdict, results: attrdict):
     print("Optimization Results Statistics:")
     print(f"  - Total Steps: {params.T}")
     print(f"  - Transport Time: {params.transport_time}")
+    print()
 
     r_tracking_error = (results.target_rs - results.trajectory) * 1e3  # Convert from m to mm
     r_tracking_rmse = jnp.sqrt(jnp.mean(jnp.square(r_tracking_error), axis=0))  # Convert from mm to micrometers
@@ -457,6 +458,7 @@ def show_statistics(params: attrdict, results: attrdict):
     r_diff_rmse = jnp.sqrt(jnp.mean(jnp.square(r_diff), axis=0))  # Convert from mm to micrometers
     r_max_diff = jnp.max(jnp.abs(r_diff), axis=0)
     print(f"  - RMSE of Trajectory Differences: {r_diff_rmse} μm")
+    print()
 
     U_tracking_error = results.U0s - results.U0s[0]  # U0 tracking error
     U_tracking_rmse = jnp.sqrt(jnp.mean(jnp.square(U_tracking_error)))
@@ -464,22 +466,56 @@ def show_statistics(params: attrdict, results: attrdict):
     print(f"  - RMSE of U0 Tracking: {U_tracking_rmse} J")
     print(f"  - Max U0 Tracking Error: {U_max_tracking_error} J")
 
-    print(f"  - Initial U0: {results.U0s[0]} J")
-    print(f"  - Initial Chemical Potential: {results.mu_vals[0]} J")
-
     U_diff = results.U0s[1:] - results.U0s[:-1]  # U0 differences
     U_diff_rmse = jnp.sqrt(jnp.mean(jnp.square(U_diff)))
+    U_last_percent = (
+        results.U0s[-1] / results.U0s[0] - 1
+    ) * 100.0  # Last U0 difference as a percentage of the initial U0
+    print(f"  - Initial U0: {results.U0s[0]} J")
+    print(f"  - Last U0: {results.U0s[-1]} J")
+    print(f". - Last U0 Difference: {U_diff[-1]} J")
+    print(f"  - {U_last_percent:.4f}% of initial U0)")
+    print(f"  - Max U0 Difference: {jnp.max(jnp.abs(U_diff))} J")
     print(f"  - RMSE of U0 Differences: {U_diff_rmse} J")
+    print()
 
     mu_traccking_error = results.mu_vals - results.mu_vals[0]  # Chemical potential tracking error
     mu_tracking_rmse = jnp.sqrt(jnp.mean(jnp.square(mu_traccking_error)))
     mu_max_tracking_error = jnp.max(jnp.abs(mu_traccking_error))
+    mu_last_percent = (
+        results.mu_vals[-1] / results.mu_vals[0] - 1
+    ) * 100.0  # Last mu difference as a percentage of the initial mu
+    print(f"  - Initial Chemical Potential: {results.mu_vals[0]} J")
+    print(f"  - Last Chemical Potential: {results.mu_vals[-1]} J")
+    print(f". {mu_last_percent:.4f}% of initial chemical potential)")
     print(f"  - RMSE of Chemical Potential Tracking: {mu_tracking_rmse} J")
     print(f"  - Max Chemical Potential Tracking Error: {mu_max_tracking_error} J")
+    print()
 
     mu_diff = results.mu_vals[1:] - results.mu_vals[:-1]  # Chemical potential differences
     mu_diff_rmse = jnp.sqrt(jnp.mean(jnp.square(mu_diff)))
     print(f"  - RMSE of Chemical Potential Differences: {mu_diff_rmse} J")
+    print()
+
+    omega_tracking_error = results.omegas - results.omegas[0]  # Frequency tracking error
+    omega_tracking_rmse = jnp.sqrt(jnp.mean(jnp.square(omega_tracking_error), axis=0))
+    omega_max_tracking_error = jnp.max(jnp.abs(omega_tracking_error), axis=0)
+    print(f"  - Initial Trap Frequencies: {results.omegas[0]} Hz")
+    print(f"  - Last Trap Frequencies: {results.omegas[-1]} Hz")
+    print(f"  - RMSE of Trap Frequencies Tracking: {omega_tracking_rmse} Hz")
+    print(f"  - Max Trap Frequencies Tracking Error: {omega_max_tracking_error} Hz")
+    print()
+
+    TF_radii_tracking_error = results.TF_radii - results.TF_radii[0]  # TF radii tracking error
+    TF_radii_tracking_rmse = (
+        jnp.sqrt(jnp.mean(jnp.square(TF_radii_tracking_error), axis=0)) * 1e6
+    )  # Convert from m to μm
+    TF_radii_max_tracking_error = jnp.max(jnp.abs(TF_radii_tracking_error), axis=0) * 1e6  # Convert from m to μm
+    print(f"  - RMSE of TF Radii Tracking: {TF_radii_tracking_rmse} μm")
+    print(f"  - Initial TF Radii: {results.TF_radii[0] * 1e6} μm")
+    print(f"  - Last TF Radii: {results.TF_radii[-1] * 1e6} μm")
+    print(f"  - Max TF Radii Tracking Error: {TF_radii_max_tracking_error} μm")
+    print()
 
     results = pd.DataFrame(
         {
@@ -509,13 +545,21 @@ def main():
     args = parser.parse_args()
     # fmt: on
 
+    if args.results_dir is None:
+        print("No results directory provided. Please specify the --results_dir argument.")
+        return
+
+    if not os.path.exists(args.results_dir):
+        print(f"Results directory '{args.results_dir}' does not exist.")
+        return
+
     # Load results from a CSV file if a path is provided
     params, results = load_results(args.results_dir)
     if args.transport_time is not None:
         params.transport_time = args.transport_time  # Override transport time if provided
     show_statistics(params, results)
     if not args.no_plot:
-        plot_results(params, results, args.save_dir, args.start_step, args.end_step)
+        plot_results(params, results, args.save_dir, args.start_step, args.end_step, args.show_suptitle)
 
 
 if __name__ == "__main__":
