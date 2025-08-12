@@ -81,28 +81,72 @@ Harmonic Oscillator Radii    [μm] : [     9.689      3.139      2.978]
 
 The framework implements gradient-based optimization techniques to compute optimal current schedules for the atom chip wires. This allows for efficient transport of BECs while maintaining the desired trap geometry in simulated time.
 
-<img src="images/optimization_currents.png" alt="Optimized Current Schedule"/>
+#### Optimization results at a glance:
 
-### Optimization result visualization
+* [**Physically realistic currents** — within ±3.5 A (shift) / ±70 A (guide)](#optimized-current-schedule)
+* [**2.4 mm transport** of a BEC with < 10 µm deviation in all axes](#optimized-trap-trajectory-and-lateral-motion)
+* [**Trap geometry stability** — final frequencies within ± 3% of initial values](#trap-frequencies-and-thomas-fermi-radii)
+* [**Energy conservation** — trap minimum energy drift ≈ −3.6%, chemical potential drift ≈ +0.14%](#potential-minima-and-chemical-potential)
+* [**Adiabaticity preserved** — ε(t) < 1 for transport durations ≥ 3 s](#speed-vs-adiabaticity)
 
-The framework provides detailed visualizations of the optimization results.
+Detailed visualizations for each metric are shown below.
 
-Optimized trap trajectory following a smoothstep schedule; lateral deviation < 10 μm.
-<img src="images/optimization_trajectory.png" alt="Optimized Trajectory"/>
-<img src="images/optimization_lateral_position.png" alt="Optimized Lateral Position"/>
-<img src="images/optimization_lateral_motion.png" alt="Optimized Lateral Motion"/>
+#### Optimized Current Schedule
+<p align="center">
+<img src="images/optimization_currents.png" width="80%" alt="Optimized Current Schedule"/>
+<br>
+<em>For this optimization, the guiding wire currents were kept constant while the shift wire currents were optimized.</em>
+</p>
 
-The speed of the transport in terms of the distance moved per time step is computed.
-<img src="images/optimization_velocity.png" alt="Optimized Velocity"/>
+#### Optimized Trap Trajectory and Lateral Motion
+<p align="center">
+<img src="images/optimization_trajectory.png" width="80%" alt="Optimized Trajectory"/>
+<br>
+<em>Optimized trap trajectory following a smoothstep schedule.</em><br>
+<em>The dotted line indicates the center of the shifting wire.</em>
+</p>
 
-Trap frequencies and Thomas-Fermi radii are computed at each time step, providing insights into the dynamics of the BEC during transport.
-<img src="images/optimization_freq_radii.png" alt="Optimized Frequencies and Radii"/>
+**Lateral Position and Motion** — deviations in y and z remain < 10 µm during transport.  
+<p align="center">
+<img src="images/optimization_lateral_position.png" width="80%" alt="Optimized Lateral Position"/>
+<br>
+<em>Lateral deviation < 10 μm.</em>
+</p>
+<p align="center">
+<img src="images/optimization_lateral_motion.png" width="80%" alt="Optimized Lateral Motion"/>
+<br>
+<em>This shows the clear pattern of the lateral motion. </em><br><em>
+The BEC moves every time it passes near the center of the shift wire, which is indicated by the dotted line.</em>
+</p>
 
-Potential minima and chemical potential are computed at each time step.
-<img src="images/optimization_potentials.png" alt="Optimized Potential"/>
+<p align="center">
+<img src="images/optimization_velocity.png" width="80%" alt="Optimized Velocity"/>
+<br>
+<em>The speed of the transport in terms of the distance moved per time step is computed. </em>
+</p>
 
-The framework also evaluates the speed vs adiabaticity trade-off, allowing users to assess the performance of the optimized current schedules in terms of speed and adiabaticity.
-<img src="images/optimization_adiabaticity.png" alt="Speed vs Adiabaticity Evaluation"/></td>
+#### Trap Frequencies and Thomas-Fermi Radii
+<p align="center">
+<img src="images/optimization_freq_radii.png" width="80%" alt="Optimized Frequencies and Radii"/>
+<br>
+<em>Trap frequencies and Thomas-Fermi radii are computed at each time step.<em><br>
+<em>It provides insights into the dynamics of the BEC during transport.</em>
+</p>
+
+#### Potential Minima and Chemical Potential
+<p align="center">
+<img src="images/optimization_potentials.png" width="80%" alt="Optimized Potential"/>
+<br>
+<em>Potential minima and chemical potential are computed at each time step.</em>
+</p>
+
+#### Speed vs Adiabaticity
+<p align="center">
+<img src="images/optimization_adiabaticity.png" width="60%" alt="Speed vs Adiabaticity Evaluation"/>
+<br>
+<em>The framework evaluates the speed vs adiabaticity trade-off.</em><br>
+<em>It allows users to assess the performance of the optimized current schedules in terms of speed and adiabaticity.</em>
+</p>
 
 ## Installation
 
