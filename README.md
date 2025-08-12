@@ -129,7 +129,7 @@ The BEC moves every time it passes near the center of the shift wire, which is i
 <p align="center">
 <img src="images/optimization_freq_radii.png" width="80%" alt="Optimized Frequencies and Radii"/>
 <br>
-<em>Trap frequencies and Thomas-Fermi radii are computed at each time step.<em><br>
+<em>Trap frequencies and Thomas-Fermi radii are computed at each time step.</em><br>
 <em>It provides insights into the dynamics of the BEC during transport.</em>
 </p>
 
