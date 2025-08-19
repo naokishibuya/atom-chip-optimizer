@@ -1,10 +1,13 @@
-# Atom Chip Optimizer
+# 🧲 Atom Chip Optimizer
 
-## Overview
+[![arXiv](https://img.shields.io/badge/arXiv-2508.11712-b31b1b.svg)](https://arxiv.org/abs/2508.11712)
+[![DOI](https://img.shields.io/badge/DOI-10.48550/arXiv.2508.11712-informational)](https://doi.org/10.48550/arXiv.2508.11712)
+
+## 📝 Overview
 
 The objective of this project is to provide a Python-based framework for optimizing wire-current schedules on atom chips. The framework is designed to facilitate the transport of Bose–Einstein condensates (BECs) while maintaining the desired trap geometry and ensuring adiabaticity. It leverages gradient-based optimization techniques to compute optimal current schedules efficiently.
 
-## Features
+## ✨ Features
 
 ### Custom Blender plugin
 
@@ -80,7 +83,6 @@ Harmonic Oscillator Radii    [μm] : [     9.689      3.139      2.978]
 ### Gradient-based optimization
 
 The framework implements gradient-based optimization techniques to compute optimal current schedules for the atom chip wires. This allows for efficient transport of BECs while maintaining the desired trap geometry in simulated time.
-
 #### Optimization results at a glance:
 
 * [**Physically realistic currents** — within ±3.5 A (shift) / ±70 A (guide)](#optimized-current-schedule)
@@ -125,7 +127,7 @@ The BEC moves every time it passes near the center of the shift wire, which is i
 <em>The speed of the transport in terms of the distance moved per time step is computed. </em>
 </p>
 
-#### Trap Frequencies and Thomas-Fermi Radii
+### Trap Frequencies and Thomas-Fermi Radii
 <p align="center">
 <img src="images/optimization_freq_radii.png" width="80%" alt="Optimized Frequencies and Radii"/>
 <br>
@@ -133,14 +135,14 @@ The BEC moves every time it passes near the center of the shift wire, which is i
 <em>It provides insights into the dynamics of the BEC during transport.</em>
 </p>
 
-#### Potential Minima and Chemical Potential
+### Potential Minima and Chemical Potential
 <p align="center">
 <img src="images/optimization_potentials.png" width="80%" alt="Optimized Potential"/>
 <br>
 <em>Potential minima and chemical potential are computed at each time step.</em>
 </p>
 
-#### Speed vs Adiabaticity
+### Speed vs Adiabaticity
 <p align="center">
 <img src="images/optimization_adiabaticity.png" width="60%" alt="Speed vs Adiabaticity Evaluation"/>
 <br>
@@ -148,7 +150,7 @@ The BEC moves every time it passes near the center of the shift wire, which is i
 <em>It allows users to assess the performance of the optimized current schedules in terms of speed and adiabaticity.</em>
 </p>
 
-## Installation
+## ⚙️ Installation
 
 ### 1. Clone the repository:
 
@@ -179,7 +181,7 @@ The BEC moves every time it passes near the center of the shift wire, which is i
    pre-commit install   # Install pre-commit hooks
    ```
 
-## Demonstration
+## 🚀 Demonstration
 
 ### Copper Z Trap
 
@@ -225,6 +227,29 @@ To visualize different scheduler curves, you can run:
 python src/transport_scheduler.py
 ```
 
-## Credit
+## 📄 Paper
+
+**Gradient-Based Inverse Optimization of Atom-Chip Wire Currents for BEC Transport**  
+Naoki Shibuya (MSc thesis, University of Sussex, 2025)
+
+- Read on arXiv: https://arxiv.org/abs/2508.11712  
+- PDF: https://arxiv.org/pdf/2508.11712
+
+### Cite this work
+
+```bibtex
+@misc{shibuya2025gradient,
+  title         = {Gradient-Based Inverse Optimization of Atom-Chip Wire Currents for BEC Transport},
+  author        = {Naoki Shibuya},
+  year          = {2025},
+  eprint        = {2508.11712},
+  archivePrefix = {arXiv},
+  primaryClass  = {quant-ph},
+  doi           = {10.48550/arXiv.2508.11712},
+  note          = {MSc thesis, University of Sussex, 2025}
+}
+```
+
+## 🙏 Credit
 
 This project is inspired by the work of the University of Sussex's BEC lab's MATLAB scripts.
