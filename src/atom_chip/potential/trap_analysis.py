@@ -148,7 +148,7 @@ def analyze_field(
         )
     else:
         logger.info(f"Optimization failed: {minimum.message}")
-        return PotentialAnalysis(minimum, None, None, None, None, None)
+        return FieldAnalysis(minimum, None, None, None)
 
     # Step 2: Hessian
     hessian = hessian_at_minimum(objective, minimum.position, **options.hessian)

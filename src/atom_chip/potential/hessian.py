@@ -16,7 +16,7 @@ def hessian_at_minimum(
     function: Callable[[jnp.ndarray], float],
     position: jnp.ndarray,
     method: str = "jax",  # 'jax' or 'finite-difference'
-    **kwargs,
+    step: float = 1e-5,
 ) -> Hessian:
     """
     Compute the Hessian matrix of a function at a given position using JAX or finite differences.
@@ -25,7 +25,6 @@ def hessian_at_minimum(
     if method == "jax":
         hessian = hessian_by_jax(function, position)
     elif method == "finite-difference":
-        step = kwargs.get("step", 1e-5)
         hessian = hessian_by_finite_difference(function, position, step)
     else:
         raise ValueError(f"Unknown method: {method}. Use 'jax' or 'finite-difference'.")

@@ -314,7 +314,7 @@ def analyze_atom_chip(atom_chip: ac.AtomChip) -> ac.atom_chip.AtomChipAnalysis:
         hessian=dict(
             # method = "jax",
             method="finite-difference",
-            hessian_step=1e-5,  # Step size for Hessian calculation
+            step=1e-5,  # Step size for Hessian calculation
         ),
         # for the trap analayis (not used for field analysis)
         total_atoms=1e5,
