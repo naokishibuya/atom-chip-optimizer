@@ -297,10 +297,13 @@ def larmor_frequency(atom: Atom, B_mag: jnp.ndarray) -> Frequency:
 
     Precession rate of an atom's magnetic moment in an external magnetic field.
     (how fast tiny internal magnets wobble in a magnetic field)
+
+    Note: ω_L = gF * μB * |B| / ℏ — independent of mF (per-step Zeeman gap / ℏ).
+    Distinct from the trap depth μ * |B| where μ = gF * mF * μB.
     """
     # B_mag is in [G]: convert to [T] by 1e-4
-    # mu B_mag is in [J/T] where mu = gF mF muB
-    angular = magnetic_moment(atom) * B_mag * 1e-4 / constants.hbar
+    # gF * muB is in [J/T]
+    angular = atom.gF * constants.muB * B_mag * 1e-4 / constants.hbar
     frequency = angular / (2 * jnp.pi)
     return Frequency(frequency, angular)
 
